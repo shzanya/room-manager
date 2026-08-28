@@ -1,0 +1,16 @@
+{
+  "name": "@room-manager/core",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@room-manager/shared": "workspace:*",
+    "@room-manager/contracts": "workspace:*",
+    "@room-manager/database": "workspace:*"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

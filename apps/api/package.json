@@ -1,0 +1,16 @@
+{
+  "name": "@room-manager/api",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@room-manager/core": "workspace:*",
+    "@room-manager/database": "workspace:*",
+    "@room-manager/config": "workspace:*",
+    "@room-manager/logger": "workspace:*",
+    "@room-manager/contracts": "workspace:*",
+    "@room-manager/shared": "workspace:*"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

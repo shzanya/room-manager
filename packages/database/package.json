@@ -1,0 +1,20 @@
+{
+  "name": "@room-manager/database",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@room-manager/config": "workspace:*",
+    "@room-manager/contracts": "workspace:*",
+    "@room-manager/shared": "workspace:*",
+    "drizzle-orm": "0.45.2"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.10"
+  }
+}

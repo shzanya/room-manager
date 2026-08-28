@@ -16,13 +16,6 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   },
-  "exclude": [
-    "node_modules",
-    "dist",
-    "coverage",
-    "drizzle",
-    "data",
-    "drizzle.config.ts",
-    "tsconfig.tools.json"
-  ]
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules"]
 }

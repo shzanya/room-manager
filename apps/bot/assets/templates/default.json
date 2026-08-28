@@ -1,0 +1,12 @@
+{
+  "name": "Niako",
+  "title": "—・Управление приватной комнатой",
+  "description": "> Жми следующие кнопки, чтобы настроить свою комнату",
+  "showList": true,
+  "i18n": {
+    "en": {
+      "title": "—・Private Room Control",
+      "description": "> Use the buttons below to set up your room"
+    }
+  }
+}

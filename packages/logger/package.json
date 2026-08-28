@@ -1,0 +1,15 @@
+{
+  "name": "@room-manager/logger",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@room-manager/config": "workspace:*",
+    "@room-manager/shared": "workspace:*"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

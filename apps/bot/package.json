@@ -1,0 +1,27 @@
+{
+  "name": "@room-manager/bot",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@discordx/di": "^3.3.4",
+    "@discordx/importer": "^1.2.0",
+    "@napi-rs/canvas": "^1.0.8",
+    "@room-manager/config": "workspace:*",
+    "@room-manager/contracts": "workspace:*",
+    "@room-manager/core": "workspace:*",
+    "@room-manager/database": "workspace:*",
+    "@room-manager/logger": "workspace:*",
+    "@room-manager/shared": "workspace:*",
+    "discord.js": "^14.27.0",
+    "discordx": "^11.13.3",
+    "pino": "^9.6.0",
+    "tsyringe": "^4.8.0"
+  },
+  "devDependencies": {
+    "@types/pino": "^7.0.0"
+  },
+  "scripts": {
+    "start": "bun --env-file=../../.env run src/index.ts",
+    "typecheck": "tsc --noEmit"
+  }
+}

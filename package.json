@@ -1,15 +1,38 @@
 {
   "name": "room-manager",
-  "version": "1.0.50",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.3.14",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "bun run --watch src/index.ts"
-  },
-  "dependencies": {
-    "elysia": "latest"
+    "start": "bun run --cwd apps/bot start",
+    "setup:workspaces": "bun scripts/setup-workspaces.ts",
+    "setup:dependencies": "bun scripts/setup-dependencies.ts",
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "lint": "biome check .",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "format": "biome format --write .",
+    "check": "biome check ."
   },
   "devDependencies": {
-    "bun-types": "latest"
+    "@biomejs/biome": "latest",
+    "@libsql/client": "^0.17.4",
+    "@types/bun": "latest",
+    "@types/node": "latest",
+    "drizzle-kit": "^0.31.10",
+    "turbo": "latest",
+    "typescript": "latest"
   },
-  "module": "src/index.js"
+  "dependencies": {
+    "reflect-metadata": "^0.2.2",
+    "zod": "^4.4.3"
+  }
 }

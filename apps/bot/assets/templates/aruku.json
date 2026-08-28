@@ -1,0 +1,10 @@
+{
+  "name": "aruku",
+  "title": "",
+  "description": "",
+  "showList": false,
+  "minimal": true,
+  "image": {
+    "file": "banners/aruku.png"
+  }
+}

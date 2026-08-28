@@ -1,0 +1,12 @@
+{
+  "name": "@room-manager/dashboard",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@room-manager/contracts": "workspace:*",
+    "@room-manager/shared": "workspace:*"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}
