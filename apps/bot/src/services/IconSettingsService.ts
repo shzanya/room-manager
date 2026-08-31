@@ -10,7 +10,9 @@ import {
   ButtonBuilder,
   type ButtonInteraction,
   ButtonStyle,
+  ChannelSelectMenuBuilder,
   type ChatInputCommandInteraction,
+  ChannelType,
   ContainerBuilder,
   type Guild,
   GuildMember,
@@ -18,7 +20,6 @@ import {
   MediaGalleryItemBuilder,
   MessageFlags,
   PermissionFlagsBits,
-  RoleSelectMenuBuilder,
   StringSelectMenuBuilder,
   type StringSelectMenuInteraction,
   StringSelectMenuOptionBuilder,
@@ -118,6 +119,7 @@ export class IconSettingsService {
             L.settings.designHint,
             L.settings.controlHint,
             L.settings.rolesHint,
+            L.settings.channelsHint,
             L.settings.languageHint,
           ].join("\n"),
         ),
@@ -144,10 +146,10 @@ export class IconSettingsService {
                 .setValue("control")
                 .setEmoji("🎛️"),
               new StringSelectMenuOptionBuilder()
-                .setLabel(L.settings.secRoles)
-                .setDescription(L.settings.secRolesDesc)
-                .setValue("roles")
-                .setEmoji("👥"),
+                .setLabel(L.settings.secChannels)
+                .setDescription(L.settings.secChannelsDesc)
+                .setValue("channels")
+                .setEmoji("📡"),
               new StringSelectMenuOptionBuilder()
                 .setLabel(L.settings.secLang)
                 .setDescription(L.settings.secLangDesc)
@@ -441,6 +443,16 @@ export class IconSettingsService {
               : L.settings.btnPublicOff,
           )
           .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId("setup:ctrl:logs")
+          .setLabel(
+            config.logChannelId
+              ? L.settings.btnLogsOn
+              : L.settings.btnLogsOff,
+          )
+          .setStyle(
+            config.logChannelId ? ButtonStyle.Success : ButtonStyle.Secondary,
+          ),
       ),
     );
 
@@ -448,18 +460,22 @@ export class IconSettingsService {
     return container;
   }
 
-  /** Roles & policies view: action selector + mute role + admin roles. */
-  buildRoles(config: GuildConfig, flash?: string | null): ContainerBuilder {
+  buildChannels(config: GuildConfig, flash?: string | null): ContainerBuilder {
     const L = tOf(config.guildId);
-    const rp = svc().rolePolicy;
-    const cfg = rp.getConfig(config.guildId);
 
     const headerLines = [
-      `### ${L.settings.rolesTitle}`,
-      L.settings.rolesDesc,
+      `### ${L.settings.channelsTitle}`,
+      format(L.settings.channelsCategory, {
+        value: config.categoryId ? `<#${config.categoryId}>` : L.settings.channelsCategoryNone,
+      }),
+      format(L.settings.channelsCreator, {
+        value: config.creatorChannelId ? `<#${config.creatorChannelId}>` : L.settings.channelsCreatorNone,
+      }),
+      format(L.settings.channelsLog, {
+        value: config.logChannelId ? `<#${config.logChannelId}>` : L.settings.channelsLogNone,
+      }),
       "",
-      `**${L.settings.rolesMuteRole}:** ${cfg.muteRoleId ? `<@&${cfg.muteRoleId}>` : L.settings.muteRoleOff}`,
-      `**${L.settings.rolesAdminRoles}:** ${cfg.adminRoles.length > 0 ? cfg.adminRoles.map((id) => `<@&${id}>`).join(", ") : "—"}`,
+      L.settings.channelsNote,
     ];
 
     if (flash) {
@@ -472,211 +488,40 @@ export class IconSettingsService {
         new TextDisplayBuilder().setContent(headerLines.join("\n")),
       );
 
-    // Action selector
-    const ACTION_OPTIONS: Array<{
-      value: import("./RolePolicyService").PermissionAction;
-      label: string;
-      desc: string;
-      emoji: string;
-    }> = [
-      {
-        value: "createRoom",
-        label: L.settings.rolesPermCreateRoom,
-        desc: L.settings.rolesActionCreateRoomDesc,
-        emoji: "🏠",
-      },
-      {
-        value: "manageRoom",
-        label: L.settings.rolesPermManageRoom,
-        desc: L.settings.rolesActionManageRoomDesc,
-        emoji: "⚙️",
-      },
-      {
-        value: "whitelist",
-        label: L.settings.rolesPermWhitelist,
-        desc: L.settings.rolesActionWhitelistDesc,
-        emoji: "📋",
-      },
-      {
-        value: "mute",
-        label: L.settings.rolesPermMute,
-        desc: L.settings.rolesActionMuteDesc,
-        emoji: "🔇",
-      },
-      {
-        value: "settings",
-        label: L.settings.rolesPermSettings,
-        desc: L.settings.rolesActionSettingsDesc,
-        emoji: "🔧",
-      },
-    ];
-
     container.addActionRowComponents(
-      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId("setup:roles:action")
-          .setPlaceholder(L.settings.rolesActionPlaceholder)
-          .addOptions(
-            ACTION_OPTIONS.map((o) =>
-              new StringSelectMenuOptionBuilder()
-                .setLabel(o.label)
-                .setDescription(o.desc)
-                .setValue(o.value)
-                .setEmoji(o.emoji),
-            ),
-          ),
-      ),
-    );
-
-    // Mute role selector
-    container.addActionRowComponents(
-      new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(
-        new RoleSelectMenuBuilder()
-          .setCustomId("setup:roles:mute-role")
-          .setPlaceholder(L.settings.rolesMuteRoleDesc)
+      new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
+        new ChannelSelectMenuBuilder()
+          .setCustomId("setup:channels:category")
+          .setPlaceholder(L.settings.channelsPlaceholderCategory)
+          .setChannelTypes(ChannelType.GuildCategory)
           .setMinValues(0)
           .setMaxValues(1),
       ),
     );
 
-    // Admin roles selector (bypass all checks)
     container.addActionRowComponents(
-      new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(
-        new RoleSelectMenuBuilder()
-          .setCustomId("setup:roles:admin-roles")
-          .setPlaceholder(L.settings.rolesAdminRoles)
+      new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
+        new ChannelSelectMenuBuilder()
+          .setCustomId("setup:channels:creator")
+          .setPlaceholder(L.settings.channelsPlaceholderCreator)
+          .setChannelTypes(ChannelType.GuildVoice)
           .setMinValues(0)
-          .setMaxValues(10)
-          .setDefaultRoles(cfg.adminRoles),
+          .setMaxValues(1),
+      ),
+    );
+
+    container.addActionRowComponents(
+      new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
+        new ChannelSelectMenuBuilder()
+          .setCustomId("setup:channels:log")
+          .setPlaceholder(L.settings.channelsPlaceholderLog)
+          .setChannelTypes(ChannelType.GuildText)
+          .setMinValues(0)
+          .setMaxValues(1),
       ),
     );
 
     container.addActionRowComponents(this.backRow(config.guildId));
-    return container;
-  }
-
-  /** Sub-view for a single permission action: group toggles + role IDs. */
-  buildRolePolicy(
-    config: GuildConfig,
-    action: import("./RolePolicyService").PermissionAction,
-    flash?: string | null,
-  ): ContainerBuilder {
-    const L = tOf(config.guildId);
-    const rp = svc().rolePolicy;
-    const cfg = rp.getConfig(config.guildId);
-    const policy = cfg.policies[action];
-
-    const actionLabels: Record<string, string> = {
-      createRoom: L.settings.rolesPermCreateRoom,
-      manageRoom: L.settings.rolesPermManageRoom,
-      whitelist: L.settings.rolesPermWhitelist,
-      mute: L.settings.rolesPermMute,
-      settings: L.settings.rolesPermSettings,
-    };
-
-    const GROUP_OPTIONS: Array<{
-      value: import("./RolePolicyService").RoleGroup;
-      label: string;
-    }> = [
-      { value: "administrators", label: L.settings.rolesGroupAdministrators },
-      { value: "moderators", label: L.settings.rolesGroupModerators },
-      { value: "members", label: L.settings.rolesGroupMembers },
-      { value: "restricted", label: L.settings.rolesGroupRestricted },
-    ];
-
-    const allowGroups = policy.allowGroups;
-    const denyGroups = policy.denyGroups;
-
-    const headerLines = [
-      `### ${actionLabels[action] ?? action}`,
-      `**${L.settings.rolesAllowGroups}:** ${allowGroups.length > 0 ? allowGroups.map((g) => GROUP_OPTIONS.find((o) => o.value === g)?.label ?? g).join(", ") : "—"}`,
-      `**${L.settings.rolesDenyGroups}:** ${denyGroups.length > 0 ? denyGroups.map((g) => GROUP_OPTIONS.find((o) => o.value === g)?.label ?? g).join(", ") : "—"}`,
-      `**${L.settings.rolesAllowRoles}:** ${policy.allowRoles.length > 0 ? policy.allowRoles.map((id) => `<@&${id}>`).join(", ") : "—"}`,
-      `**${L.settings.rolesDenyRoles}:** ${policy.denyRoles.length > 0 ? policy.denyRoles.map((id) => `<@&${id}>`).join(", ") : "—"}`,
-    ];
-
-    if (flash) {
-      headerLines.push("", `-# ${flash}`);
-    }
-
-    const container = new ContainerBuilder()
-      .setAccentColor(config.accentColor)
-      .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(headerLines.join("\n")),
-      );
-
-    // Allow groups multi-select
-    container.addActionRowComponents(
-      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId(`setup:roles:allow-groups:${action}`)
-          .setPlaceholder(L.settings.rolesAllowGroups)
-          .setMinValues(0)
-          .setMaxValues(GROUP_OPTIONS.length)
-          .addOptions(
-            GROUP_OPTIONS.map((o) =>
-              new StringSelectMenuOptionBuilder()
-                .setLabel(o.label)
-                .setValue(o.value)
-                .setDefault(allowGroups.includes(o.value)),
-            ),
-          ),
-      ),
-    );
-
-    // Deny groups multi-select
-    container.addActionRowComponents(
-      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId(`setup:roles:deny-groups:${action}`)
-          .setPlaceholder(L.settings.rolesDenyGroups)
-          .setMinValues(0)
-          .setMaxValues(GROUP_OPTIONS.length)
-          .addOptions(
-            GROUP_OPTIONS.map((o) =>
-              new StringSelectMenuOptionBuilder()
-                .setLabel(o.label)
-                .setValue(o.value)
-                .setDefault(denyGroups.includes(o.value)),
-            ),
-          ),
-      ),
-    );
-
-    // Allow roles (RoleSelectMenuBuilder, multi)
-    container.addActionRowComponents(
-      new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(
-        new RoleSelectMenuBuilder()
-          .setCustomId(`setup:roles:allow-roles:${action}`)
-          .setPlaceholder(L.settings.rolesAllowRoles)
-          .setMinValues(0)
-          .setMaxValues(10)
-          .setDefaultRoles(policy.allowRoles),
-      ),
-    );
-
-    // Deny roles (RoleSelectMenuBuilder, multi)
-    container.addActionRowComponents(
-      new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(
-        new RoleSelectMenuBuilder()
-          .setCustomId(`setup:roles:deny-roles:${action}`)
-          .setPlaceholder(L.settings.rolesDenyRoles)
-          .setMinValues(0)
-          .setMaxValues(10)
-          .setDefaultRoles(policy.denyRoles),
-      ),
-    );
-
-    // Back to main roles view
-    container.addActionRowComponents(
-      new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId("setup:roles:home")
-          .setLabel(L.settings.back)
-          .setStyle(ButtonStyle.Secondary),
-      ),
-    );
-
     return container;
   }
 
@@ -771,7 +616,7 @@ export class IconSettingsService {
         section !== "icons" &&
         section !== "design" &&
         section !== "control" &&
-        section !== "roles" &&
+        section !== "channels" &&
         section !== "language"
       )
         return;
@@ -797,9 +642,9 @@ export class IconSettingsService {
         return;
       }
 
-      if (section === "roles") {
+      if (section === "channels") {
         await interaction.editReply({
-          components: [this.buildRoles(config)],
+          components: [this.buildChannels(config)],
           flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
         });
         return;
@@ -918,7 +763,7 @@ export class IconSettingsService {
       const value = interaction.values[0];
       if (value !== "ru" && value !== "en") return;
 
-      this.locale.set(guild.id as GuildId, value as Locale);
+      await this.locale.set(guild.id as GuildId, value as Locale);
 
       // Re-render in the NEW locale.
       const config = await this.guildService.getById(guild.id as GuildId);
@@ -1006,7 +851,7 @@ export class IconSettingsService {
       const mode = interaction.values[0];
       if (mode !== "both" && mode !== "voice" && mode !== "chat") return;
 
-      this.controlSettings.set(guild.id as GuildId, {
+      await this.controlSettings.set(guild.id as GuildId, {
         mode: mode as "both" | "voice" | "chat",
       });
 
@@ -1056,7 +901,7 @@ export class IconSettingsService {
       if (!guild) return;
 
       const current = this.controlSettings.get(guild.id as GuildId);
-      this.controlSettings.set(guild.id as GuildId, {
+      await this.controlSettings.set(guild.id as GuildId, {
         instantDelete: !current.instantDelete,
       });
 
@@ -1103,7 +948,7 @@ export class IconSettingsService {
       const guildId = guild.id as GuildId;
       const current = this.controlSettings.get(guildId);
       const makePublic = !current.publicCategory;
-      this.controlSettings.set(guildId, { publicCategory: makePublic });
+      await this.controlSettings.set(guildId, { publicCategory: makePublic });
 
       // Apply to the existing category right away.
       const config = await this.guildService.getById(guildId);
@@ -1148,6 +993,66 @@ export class IconSettingsService {
       });
     } catch (error) {
       this.logger.error("Failed to toggle public category", error);
+    }
+  }
+
+  async handleLogsToggle(
+    interaction: import("discord.js").ButtonInteraction,
+  ): Promise<void> {
+    try {
+      await interaction.deferUpdate();
+
+      const member = interaction.member;
+      if (
+        !(member instanceof GuildMember) ||
+        !member.permissions.has(PermissionFlagsBits.ManageGuild)
+      ) {
+        return;
+      }
+
+      const guild = interaction.guild;
+      if (!guild) return;
+
+      const config = await this.guildService.getById(guild.id as GuildId);
+      if (!config) return;
+
+      const L = tOf(config.guildId);
+
+      if (config.logChannelId) {
+        const logChannel = await guild.channels
+          .fetch(config.logChannelId)
+          .catch(() => null);
+
+        if (logChannel) {
+          await logChannel.delete().catch(() => null);
+        }
+
+        await this.guildService.update(config.guildId, {
+          logChannelId: null,
+        });
+
+        const updated = await this.guildService.getById(config.guildId);
+        if (!updated) return;
+
+        await interaction.editReply({
+          components: [
+            this.buildControl(updated, L.settings.flashLogCleared),
+          ],
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+        });
+      } else {
+        await interaction.editReply({
+          components: [
+            this.buildControl(
+              config,
+              L.settings.flashLogCleared,
+            ),
+          ],
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+        });
+      }
+    } catch (error) {
+      this.logger.error("Failed to toggle logs", error);
     }
   }
 
@@ -1263,41 +1168,8 @@ export class IconSettingsService {
     });
   }
 
-  // ── Roles & policies handlers ──────────────────────────────────────
-
-  async handleRolesAction(
-    interaction: StringSelectMenuInteraction,
-  ): Promise<void> {
-    try {
-      await interaction.deferUpdate();
-
-      const member = interaction.member;
-      if (
-        !(member instanceof GuildMember) ||
-        !member.permissions.has(PermissionFlagsBits.ManageGuild)
-      ) {
-        return;
-      }
-
-      const guild = interaction.guild;
-      if (!guild || interaction.values.length === 0) return;
-
-      const action = interaction
-        .values[0] as import("./RolePolicyService").PermissionAction;
-      const config = await this.guildService.getById(guild.id as GuildId);
-      if (!config) return;
-
-      await interaction.editReply({
-        components: [this.buildRolePolicy(config, action)],
-        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
-      });
-    } catch (error) {
-      this.logger.error("Failed to open role policy", error);
-    }
-  }
-
-  async handleRolesHome(
-    interaction: import("discord.js").ButtonInteraction,
+  async handleChannelsCategory(
+    interaction: import("discord.js").ChannelSelectMenuInteraction,
   ): Promise<void> {
     try {
       await interaction.deferUpdate();
@@ -1316,102 +1188,31 @@ export class IconSettingsService {
       const config = await this.guildService.getById(guild.id as GuildId);
       if (!config) return;
 
-      await interaction.editReply({
-        components: [this.buildRoles(config)],
-        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
-      });
-    } catch (error) {
-      this.logger.error("Failed to return to roles home", error);
-    }
-  }
+      const categoryId =
+        interaction.values.length > 0 ? interaction.values[0] : null;
 
-  async handleRolesMuteRole(
-    interaction: import("discord.js").RoleSelectMenuInteraction,
-  ): Promise<void> {
-    try {
-      await interaction.deferUpdate();
-
-      const member = interaction.member;
-      if (
-        !(member instanceof GuildMember) ||
-        !member.permissions.has(PermissionFlagsBits.ManageGuild)
-      ) {
-        return;
-      }
-
-      const guild = interaction.guild;
-      if (!guild) return;
-
-      const config = await this.guildService.getById(guild.id as GuildId);
-      if (!config) return;
+      await this.guildService.update(config.guildId, { categoryId });
 
       const L = tOf(config.guildId);
-      const roleId = interaction.values[0] ?? null;
+      const updated = await this.guildService.getById(config.guildId);
+      if (!updated) return;
 
-      svc().rolePolicy.setMuteRoleId(config.guildId, roleId);
-
-      const flash = roleId
-        ? L.settings.rolesFlashMuteRole
-        : L.settings.rolesFlashMuteRoleOff;
-      await interaction.editReply({
-        components: [this.buildRoles(config, flash)],
-        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
-      });
-    } catch (error) {
-      this.logger.error("Failed to set mute role", error);
-    }
-  }
-
-  async handleRolesAllowGroups(
-    interaction: StringSelectMenuInteraction,
-  ): Promise<void> {
-    try {
-      await interaction.deferUpdate();
-
-      const member = interaction.member;
-      if (
-        !(member instanceof GuildMember) ||
-        !member.permissions.has(PermissionFlagsBits.ManageGuild)
-      ) {
-        return;
-      }
-
-      const guild = interaction.guild;
-      if (!guild) return;
-
-      const config = await this.guildService.getById(guild.id as GuildId);
-      if (!config) return;
-
-      // Parse action from customId: setup:roles:allow-groups:{action}
-      const action = interaction.customId.split(
-        ":",
-      )[3] as import("./RolePolicyService").PermissionAction;
-      const groups =
-        interaction.values as import("./RolePolicyService").RoleGroup[];
-
-      svc().rolePolicy.setPolicy(config.guildId, action, {
-        allowGroups: groups,
-      });
-
-      // Sync category permissions when createRoom policy changes
-      if (action === "createRoom") {
-        await this.setupService.syncCategoryPermissions(guild);
-      }
-
-      const L = tOf(config.guildId);
       await interaction.editReply({
         components: [
-          this.buildRolePolicy(config, action, L.settings.rolesFlashPolicy),
+          this.buildChannels(
+            updated,
+            L.settings.flashCategorySet,
+          ),
         ],
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
       });
     } catch (error) {
-      this.logger.error("Failed to update allow groups", error);
+      this.logger.error("Failed to update category", error);
     }
   }
 
-  async handleRolesDenyGroups(
-    interaction: StringSelectMenuInteraction,
+  async handleChannelsCreator(
+    interaction: import("discord.js").ChannelSelectMenuInteraction,
   ): Promise<void> {
     try {
       await interaction.deferUpdate();
@@ -1430,34 +1231,31 @@ export class IconSettingsService {
       const config = await this.guildService.getById(guild.id as GuildId);
       if (!config) return;
 
-      const action = interaction.customId.split(
-        ":",
-      )[3] as import("./RolePolicyService").PermissionAction;
-      const groups =
-        interaction.values as import("./RolePolicyService").RoleGroup[];
+      const creatorChannelId =
+        interaction.values.length > 0 ? interaction.values[0] : null;
 
-      svc().rolePolicy.setPolicy(config.guildId, action, {
-        denyGroups: groups,
-      });
-
-      if (action === "createRoom") {
-        await this.setupService.syncCategoryPermissions(guild);
-      }
+      await this.guildService.update(config.guildId, { creatorChannelId });
 
       const L = tOf(config.guildId);
+      const updated = await this.guildService.getById(config.guildId);
+      if (!updated) return;
+
       await interaction.editReply({
         components: [
-          this.buildRolePolicy(config, action, L.settings.rolesFlashPolicy),
+          this.buildChannels(
+            updated,
+            L.settings.flashCreatorSet,
+          ),
         ],
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
       });
     } catch (error) {
-      this.logger.error("Failed to update deny groups", error);
+      this.logger.error("Failed to update creator channel", error);
     }
   }
 
-  async handleRolesAllowRoles(
-    interaction: import("discord.js").RoleSelectMenuInteraction,
+  async handleChannelsLog(
+    interaction: import("discord.js").ChannelSelectMenuInteraction,
   ): Promise<void> {
     try {
       await interaction.deferUpdate();
@@ -1476,106 +1274,55 @@ export class IconSettingsService {
       const config = await this.guildService.getById(guild.id as GuildId);
       if (!config) return;
 
-      const action = interaction.customId.split(
-        ":",
-      )[3] as import("./RolePolicyService").PermissionAction;
-      const roleIds = [...interaction.values];
+      const logChannelId =
+        interaction.values.length > 0 ? interaction.values[0] : null;
 
-      svc().rolePolicy.setPolicy(config.guildId, action, {
-        allowRoles: roleIds,
-      });
-
-      if (action === "createRoom") {
-        await this.setupService.syncCategoryPermissions(guild);
-      }
+      await this.guildService.update(config.guildId, { logChannelId });
 
       const L = tOf(config.guildId);
+      const updated = await this.guildService.getById(config.guildId);
+      if (!updated) return;
+
+      // Send "logs active" confirmation to the log channel
+      if (logChannelId) {
+        const logCh = await guild.channels.fetch(logChannelId).catch(() => null);
+        if (logCh?.isTextBased()) {
+          const container = new ContainerBuilder()
+            .setAccentColor(0x57f287)
+            .addTextDisplayComponents(
+              new TextDisplayBuilder().setContent(
+                [
+                  "## 📋 Логи активированы",
+                  `> <@${interaction.user.id}>`,
+                  "",
+                  "Все события комнат будут записываться сюда.",
+                ].join("\n"),
+              ),
+            );
+
+          await logCh
+            .send({
+              flags: 32768,
+              components: [container],
+              allowedMentions: { parse: [] },
+            })
+            .catch(() => null);
+        }
+      }
+
       await interaction.editReply({
         components: [
-          this.buildRolePolicy(config, action, L.settings.rolesFlashPolicy),
+          this.buildChannels(
+            updated,
+            logChannelId
+              ? L.settings.flashLogSet
+              : L.settings.flashLogCleared,
+          ),
         ],
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
       });
     } catch (error) {
-      this.logger.error("Failed to update allow roles", error);
-    }
-  }
-
-  async handleRolesDenyRoles(
-    interaction: import("discord.js").RoleSelectMenuInteraction,
-  ): Promise<void> {
-    try {
-      await interaction.deferUpdate();
-
-      const member = interaction.member;
-      if (
-        !(member instanceof GuildMember) ||
-        !member.permissions.has(PermissionFlagsBits.ManageGuild)
-      ) {
-        return;
-      }
-
-      const guild = interaction.guild;
-      if (!guild) return;
-
-      const config = await this.guildService.getById(guild.id as GuildId);
-      if (!config) return;
-
-      const action = interaction.customId.split(
-        ":",
-      )[3] as import("./RolePolicyService").PermissionAction;
-      const roleIds = [...interaction.values];
-
-      svc().rolePolicy.setPolicy(config.guildId, action, {
-        denyRoles: roleIds,
-      });
-
-      if (action === "createRoom") {
-        await this.setupService.syncCategoryPermissions(guild);
-      }
-
-      const L = tOf(config.guildId);
-      await interaction.editReply({
-        components: [
-          this.buildRolePolicy(config, action, L.settings.rolesFlashPolicy),
-        ],
-        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
-      });
-    } catch (error) {
-      this.logger.error("Failed to update deny roles", error);
-    }
-  }
-
-  async handleRolesAdminRoles(
-    interaction: import("discord.js").RoleSelectMenuInteraction,
-  ): Promise<void> {
-    try {
-      await interaction.deferUpdate();
-
-      const member = interaction.member;
-      if (
-        !(member instanceof GuildMember) ||
-        !member.permissions.has(PermissionFlagsBits.ManageGuild)
-      ) {
-        return;
-      }
-
-      const guild = interaction.guild;
-      if (!guild) return;
-
-      const config = await this.guildService.getById(guild.id as GuildId);
-      if (!config) return;
-
-      const roleIds = [...interaction.values];
-      svc().rolePolicy.setAdminRoles(config.guildId, roleIds);
-
-      const L = tOf(config.guildId);
-      await interaction.editReply({
-        components: [this.buildRoles(config, L.settings.rolesFlashAdminRoles)],
-        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
-      });
-    } catch (error) {
-      this.logger.error("Failed to update admin roles", error);
+      this.logger.error("Failed to update log channel", error);
     }
   }
 }

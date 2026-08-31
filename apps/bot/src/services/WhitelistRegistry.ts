@@ -1,21 +1,27 @@
+import type { RoomWhitelistRepository } from "@room-manager/database";
+import type { RoomId, UserId } from "@room-manager/shared";
+
 /**
- * Per-room access whitelist (users granted Connect by the owner).
- * Process-lifetime cache.
+ * PG-backed per-room whitelist.
  */
-const byRoom = new Map<string, Set<string>>();
+export function createWhitelistRegistry(repo: RoomWhitelistRepository) {
+  return {
+    async add(roomId: RoomId, userId: UserId): Promise<void> {
+      await repo.add(roomId, userId);
+    },
 
-export const WhitelistRegistry = {
-  add(roomId: string, userId: string): void {
-    const set = byRoom.get(roomId) ?? new Set<string>();
-    set.add(userId);
-    byRoom.set(roomId, set);
-  },
+    async remove(roomId: RoomId, userId: UserId): Promise<boolean> {
+      return repo.remove(roomId, userId);
+    },
 
-  remove(roomId: string, userId: string): boolean {
-    return byRoom.get(roomId)?.delete(userId) ?? false;
-  },
+    async list(roomId: RoomId): Promise<UserId[]> {
+      return repo.list(roomId);
+    },
 
-  list(roomId: string): string[] {
-    return [...(byRoom.get(roomId) ?? [])];
-  },
-};
+    async clear(roomId: RoomId): Promise<void> {
+      await repo.deleteByRoom(roomId);
+    },
+  };
+}
+
+export type WhitelistRegistry = ReturnType<typeof createWhitelistRegistry>;

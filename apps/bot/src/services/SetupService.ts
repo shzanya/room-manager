@@ -109,7 +109,7 @@ export class SetupService {
 
       await interaction.editReply({ ...payload });
     } catch (error) {
-      this.logger.error("Failed to run setup", error);
+      console.error("[setup] FAILED:", error instanceof Error ? `${error.message}\n${error.stack}` : error);
       await interaction.editReply({
         ...v2Error(
           "Настройка",
@@ -139,6 +139,7 @@ export class SetupService {
       creatorChannelId: null,
       panelChannelId: null,
       panelMessageId: null,
+      logChannelId: null,
       defaultUserLimit: 0,
       deleteDelaySeconds: 30,
       creationCooldownSeconds: 5,
@@ -298,10 +299,6 @@ export class SetupService {
       this.logger.info(`Created creator channel: ${creatorChannelId}`);
     }
 
-    // Sync category permissions with role policy (denied roles get
-    // ViewChannel+Connect denied on the category).
-    await this.syncCategoryPermissions(guild);
-
     if (!panelChannelId) {
       const panelChannel = await guild.channels.create({
         name: "💬-управление-комнатами",
@@ -327,56 +324,6 @@ export class SetupService {
    * Denied roles from the `createRoom` policy get ViewChannel+Connect denied.
    * Called after role policy changes and on initial setup.
    */
-  async syncCategoryPermissions(guild: Guild): Promise<void> {
-    const config = await this.guildService.getById(guild.id as GuildId);
-    if (!config?.categoryId) return;
-
-    const raw = await guild.channels.fetch(config.categoryId).catch(() => null);
-    if (raw?.type !== 4) return;
-    const category = raw;
-
-    const rp = svc().rolePolicy;
-    const cfg = rp.getConfig(guild.id as GuildId);
-    const policy = cfg.policies.createRoom;
-    const groups = cfg.groups;
-
-    // Expand denied groups into concrete role IDs
-    const deniedRoleIds = [
-      ...policy.denyRoles,
-      ...policy.denyGroups.flatMap((g) => groups[g] ?? []),
-    ];
-
-    // Apply ViewChannel+Connect deny for each denied role
-    for (const roleId of deniedRoleIds) {
-      await category.permissionOverwrites
-        .edit(roleId, { ViewChannel: false, Connect: false })
-        .catch((e: unknown) =>
-          this.logger.warn(`Failed to deny role ${roleId} on category`, e),
-        );
-    }
-
-    // Remove stale overwrites: roles that were previously denied but no longer are
-    const currentOverwrites = [...category.permissionOverwrites.cache.values()];
-    for (const ow of currentOverwrites) {
-      if (
-        ow.type === 0 && // Role overwrite
-        ow.id !== guild.id && // Not @everyone
-        ow.id !== guild.members.me?.id && // Not the bot
-        ow.deny.has("ViewChannel") &&
-        ow.deny.has("Connect") &&
-        !deniedRoleIds.includes(ow.id)
-      ) {
-        await category.permissionOverwrites
-          .delete(ow.id)
-          .catch(() => undefined);
-      }
-    }
-
-    this.logger.info(
-      `Synced category permissions: ${deniedRoleIds.length} denied roles`,
-    );
-  }
-
   async refreshPanel(guild: Guild): Promise<void> {
     try {
       const config = await this.guildService.getById(guild.id as GuildId);

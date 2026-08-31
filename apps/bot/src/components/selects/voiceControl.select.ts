@@ -1,7 +1,7 @@
 import type { RoomService } from "@room-manager/core";
 import type { RoomRepository } from "@room-manager/database";
 import type { Logger } from "@room-manager/logger";
-import type { ChannelId, UserId } from "@room-manager/shared";
+import type { ChannelId, GuildId, UserId } from "@room-manager/shared";
 import {
   ActionRowBuilder,
   type ContainerBuilder,
@@ -20,10 +20,8 @@ import {
 } from "../../discord/V2";
 import { USER_ACTIONS } from "../../discord/vcActions";
 import { format, tOf } from "../../i18n";
-import { MutesRegistry } from "../../services/MutesRegistry";
 import { svc } from "../../services/registry";
 import type { SetupService } from "../../services/SetupService";
-import { WhitelistRegistry } from "../../services/WhitelistRegistry";
 
 /** Guild-scoped dictionary for the room these components belong to. */
 function L0(guild: Guild | null | undefined) {
@@ -48,7 +46,7 @@ export async function buildMutesView(
   notice?: string,
 ): Promise<{ flags: number; components: [ContainerBuilder] }> {
   const L = L0(guild);
-  const muted = MutesRegistry.list(roomId);
+  const muted = await svc().mutes.list(roomId as import("@room-manager/shared").RoomId);
   const mutedList = muted.map((id) => `<@${id}>`).join(", ");
 
   // Tribunal-style header with the actor's avatar.
@@ -96,7 +94,7 @@ export async function buildWhitelistView(
   notice?: string,
 ): Promise<{ flags: number; components: [ContainerBuilder] }> {
   const L = L0(guild);
-  const allowed = WhitelistRegistry.list(roomId);
+  const allowed = await svc().whitelists.list(roomId as import("@room-manager/shared").RoomId);
   const allowedText = allowed.map((id) => `<@${id}>`).join(", ");
 
   // Tribunal-style header with the actor's avatar.
@@ -260,6 +258,11 @@ export class VoiceControlSelects {
         });
         await this.roomRepository.update(room.id, { locked });
 
+        await svc().logService.send(guild, guild.id as GuildId, {
+          type: locked ? "lock" : "unlock",
+          actorId: interaction.user.id,
+        });
+
         // Unified ephemeral feedback (was silent before).
         await interaction.followUp({
           ...(await v2ActionFor(
@@ -292,6 +295,16 @@ export class VoiceControlSelects {
         this.logger.info(
           `soundboard overwrite: allow=${channel.permissionOverwrites.cache.get(guild.roles.everyone.id)?.allow.bitfield} deny=${channel.permissionOverwrites.cache.get(guild.roles.everyone.id)?.deny.bitfield}`,
         );
+
+        await svc().logService.send(guild, guild.id as GuildId, {
+          type: "soundboard",
+          actorId: interaction.user.id,
+          details: [
+            nowDenied
+              ? L0(guild).soundpad.disabledWord
+              : L0(guild).soundpad.enabledWord,
+          ],
+        });
         await interaction.followUp({
           ...(await v2ActionFor(
             guild,
@@ -325,6 +338,16 @@ export class VoiceControlSelects {
         }
 
         await setActivitiesDenied(channel, nowDeniedA);
+
+        await svc().logService.send(guild, guild.id as GuildId, {
+          type: "activities",
+          actorId: interaction.user.id,
+          details: [
+            nowDeniedA
+              ? L0(guild).activities.disabledWord
+              : L0(guild).activities.enabledWord,
+          ],
+        });
         await interaction.followUp({
           ...(await v2ActionFor(
             guild,
@@ -359,7 +382,7 @@ export class VoiceControlSelects {
             (o) => o.type === 1 && o.allow.has(PermissionFlagsBits.Connect),
           )
           .map((o) => o.id);
-        for (const id of allowed) WhitelistRegistry.add(room.id, id);
+        for (const id of allowed) await svc().whitelists.add(room.id as import("@room-manager/shared").RoomId, id as import("@room-manager/shared").UserId);
 
         await interaction.followUp(
           await buildWhitelistView(guild, interaction.user.id, room.id),
@@ -426,7 +449,14 @@ export class VoiceControlSelects {
             ViewChannel: true,
             Connect: true,
           });
-          WhitelistRegistry.add(room.id, targetUserId);
+          await svc().whitelists.add(room.id as import("@room-manager/shared").RoomId, targetUserId as import("@room-manager/shared").UserId);
+
+          await svc().logService.send(guild, guild.id as GuildId, {
+            type: "whitelist",
+            actorId: interaction.user.id,
+            userId: targetUserId,
+            details: ["добавил"],
+          });
 
           await interaction.editReply({
             ...(await v2ActionFor(
@@ -445,7 +475,14 @@ export class VoiceControlSelects {
             ViewChannel: null,
             Connect: null,
           });
-          WhitelistRegistry.remove(room.id, targetUserId);
+          await svc().whitelists.remove(room.id as import("@room-manager/shared").RoomId, targetUserId as import("@room-manager/shared").UserId);
+
+          await svc().logService.send(guild, guild.id as GuildId, {
+            type: "whitelist",
+            actorId: interaction.user.id,
+            userId: targetUserId,
+            details: ["убрал"],
+          });
 
           // If target is sitting in this room — kick them out.
           const inside = voiceChannel.members.get(targetUserId);
@@ -474,6 +511,12 @@ export class VoiceControlSelects {
           }
           await m.voice.setChannel(null);
 
+          await svc().logService.send(guild, guild.id as GuildId, {
+            type: "kick",
+            actorId: interaction.user.id,
+            userId: targetUserId,
+          });
+
           await interaction.editReply({
             ...(await v2ActionFor(
               guild,
@@ -497,6 +540,12 @@ export class VoiceControlSelects {
 
           await this.roomService.update(room.id, {
             ownerId: targetUserId as UserId,
+          });
+
+          await svc().logService.send(guild, guild.id as GuildId, {
+            type: "transfer",
+            actorId: interaction.user.id,
+            userId: targetUserId,
           });
 
           await interaction.editReply({
@@ -562,22 +611,6 @@ export class VoiceControlSelects {
       );
       if (!room || room.ownerId !== interaction.user.id) return;
 
-      // Permission check: can this user mute?
-      if (
-        !svc().rolePolicy.canMute(
-          member.roles.cache.map((r) => r.id),
-          interaction.guild.id as import("@room-manager/shared").GuildId,
-        )
-      ) {
-        await interaction.editReply({
-          ...v2Error(
-            L0(interaction.guild).mutes.title,
-            L0(interaction.guild).common.noPerms,
-          ),
-        });
-        return;
-      }
-
       const voiceChannel = await interaction.guild.channels.fetch(
         room.channelId,
       );
@@ -586,13 +619,16 @@ export class VoiceControlSelects {
       await voiceChannel.permissionOverwrites.edit(targetUserId, {
         Speak: false,
       });
-      MutesRegistry.add(room.id, targetUserId);
+      await svc().mutes.add(room.id as import("@room-manager/shared").RoomId, targetUserId as import("@room-manager/shared").UserId);
 
-      // Grant the configured mute role
-      await svc().voiceStateHandler.applyMuteRole(
+      await svc().logService.send(
         interaction.guild,
-        targetUserId,
-        true,
+        interaction.guild.id as GuildId,
+        {
+          type: "mute",
+          actorId: interaction.user.id,
+          userId: targetUserId,
+        },
       );
 
       await interaction.editReply(
@@ -631,22 +667,6 @@ export class VoiceControlSelects {
       );
       if (!room || room.ownerId !== interaction.user.id) return;
 
-      // Permission check: can this user mute/unmute?
-      if (
-        !svc().rolePolicy.canMute(
-          member.roles.cache.map((r) => r.id),
-          interaction.guild.id as import("@room-manager/shared").GuildId,
-        )
-      ) {
-        await interaction.editReply({
-          ...v2Error(
-            L0(interaction.guild).mutes.title,
-            L0(interaction.guild).common.noPerms,
-          ),
-        });
-        return;
-      }
-
       await interaction.guild.members.fetch(targetUserId).catch(() => null);
 
       const ch = await interaction.guild.channels
@@ -655,13 +675,16 @@ export class VoiceControlSelects {
       if (ch?.isVoiceBased()) {
         await ch.permissionOverwrites.edit(targetUserId, { Speak: null });
       }
-      MutesRegistry.remove(room.id, targetUserId);
+      await svc().mutes.remove(room.id as import("@room-manager/shared").RoomId, targetUserId as import("@room-manager/shared").UserId);
 
-      // Revoke the configured mute role
-      await svc().voiceStateHandler.applyMuteRole(
+      await svc().logService.send(
         interaction.guild,
-        targetUserId,
-        false,
+        interaction.guild.id as GuildId,
+        {
+          type: "unmute",
+          actorId: interaction.user.id,
+          userId: targetUserId,
+        },
       );
 
       await interaction.editReply(
@@ -788,7 +811,7 @@ export class VoiceControlSelects {
         ViewChannel: true,
         Connect: true,
       });
-      WhitelistRegistry.add(room.id, targetUserId);
+      await svc().whitelists.add(room.id as import("@room-manager/shared").RoomId, targetUserId as import("@room-manager/shared").UserId);
 
       await interaction.editReply(
         await buildWhitelistView(
@@ -832,7 +855,7 @@ export class VoiceControlSelects {
         ViewChannel: null,
         Connect: null,
       });
-      WhitelistRegistry.remove(room.id, targetUserId);
+      await svc().whitelists.remove(room.id as import("@room-manager/shared").RoomId, targetUserId as import("@room-manager/shared").UserId);
 
       // If target is sitting in this room — kick them out.
       const inside = channel.members.get(targetUserId);

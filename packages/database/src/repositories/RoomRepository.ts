@@ -46,10 +46,6 @@ export class RoomRepository {
     return result.map(mapRoom);
   }
 
-  /**
-   * Latest non-deleting room owned by the user in the guild
-   * (active or cooldown) — used to return owners to their old room.
-   */
   public async findLatestOwned(
     guildId: GuildId,
     ownerId: UserId,
@@ -79,9 +75,6 @@ export class RoomRepository {
         state: room.state,
         locked: room.locked,
         hidden: room.hidden,
-        createdAt: room.createdAt,
-        updatedAt: room.updatedAt,
-        lastActivityAt: room.lastActivityAt,
       })
       .returning();
 
@@ -104,14 +97,12 @@ export class RoomRepository {
         | "state"
         | "locked"
         | "hidden"
-        | "updatedAt"
-        | "lastActivityAt"
       >
     >,
   ): Promise<Room | null> {
     const [updated] = await db
       .update(rooms)
-      .set(changes)
+      .set({ ...changes, updatedAt: new Date() })
       .where(eq(rooms.id, roomId))
       .returning();
 

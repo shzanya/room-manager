@@ -24,12 +24,12 @@ export class GuildRepository {
     const [guild] = await db
       .insert(guilds)
       .values({
-        id: crypto.randomUUID(),
         guildId: config.guildId,
         creatorChannelId: config.creatorChannelId,
         categoryId: config.categoryId,
         panelChannelId: config.panelChannelId,
         panelMessageId: config.panelMessageId,
+        logChannelId: config.logChannelId,
         defaultUserLimit: config.defaultUserLimit,
         deleteDelaySeconds: config.deleteDelaySeconds,
         creationCooldownSeconds: config.creationCooldownSeconds,
@@ -38,8 +38,6 @@ export class GuildRepository {
         iconPack: config.iconPack ?? "niako",
         iconColors: serializeIconColors(config.iconColors),
         template: config.template ?? "default",
-        createdAt: new Date(),
-        updatedAt: new Date(),
       })
       .returning();
 

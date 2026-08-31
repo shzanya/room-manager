@@ -20,8 +20,8 @@ export function mapRoom(row: RoomRow): Room {
     locked: row.locked,
     hidden: row.hidden,
 
-    createdAt: new Date(row.createdAt),
-    updatedAt: new Date(row.updatedAt),
-    lastActivityAt: new Date(row.lastActivityAt),
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    lastActivityAt: row.lastActivityAt,
   };
 }

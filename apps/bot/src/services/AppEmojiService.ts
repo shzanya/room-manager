@@ -1,14 +1,9 @@
 import { createHash } from "node:crypto";
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { ICON_COLOR_HEX, type IconColors } from "@room-manager/contracts";
+import type { AppEmojiCacheRepository } from "@room-manager/database";
 import type { Logger } from "@room-manager/logger";
 import type { Client } from "discord.js";
 import type { EmojiUploader } from "./EmojiUploader";
@@ -30,7 +25,6 @@ export const EMOJI_KEYS = [
 
 export type EmojiKey = (typeof EMOJI_KEYS)[number];
 
-/** Base PNG (legacy flat folder / custom pack) per action. */
 const SOURCE_FILE: Record<EmojiKey, string> = {
   limit: "limit",
   lock: "lock",
@@ -52,7 +46,6 @@ interface CacheEntry {
   hash: string;
 }
 
-type CacheFile = Record<string, CacheEntry>;
 
 function colorSlug(color: string): string {
   return color.startsWith("#")
@@ -80,18 +73,11 @@ function rgbOfColor(color: string): [number, number, number] | null {
 }
 
 /**
- * Application-level emoji pipeline (Room Manager edition).
- *
- * - Emojis are uploaded to the APPLICATION (usable in every guild).
- * - Names: RM_<ACTION>_<COLOR> (e.g. RM_LIMIT_RED).
- * - Content-addressed: MD5(buffer + color) — identical pixels never
- *   re-upload, restart-safe via data/emoji-cache.json.
- * - Lazy: nothing is generated at boot; panels trigger ensure*() and
- *   refresh once uploads land.
+ * Application-level emoji pipeline — backed by PostgreSQL.
+ * Table: app_emoji_cache → name, data{jsonb{id,name,hash}}
  */
 export class AppEmojiService {
-  private cache: CacheFile = {};
-  private readonly cacheFile: string;
+  private cache = new Map<string, CacheEntry>();
   private readonly legacyEmojisDir: string;
   private readonly inflight = new Map<string, Promise<CacheEntry | null>>();
   private emojiCacheFetched = false;
@@ -100,74 +86,62 @@ export class AppEmojiService {
     private readonly logger: Logger,
     private readonly uploader: EmojiUploader,
     private readonly client: Client,
+    private readonly emojiRepo: AppEmojiCacheRepository,
   ) {
-    const dataDir = join(process.cwd(), "..", "..", "data");
-    if (!existsSync(dataDir)) {
-      mkdirSync(dataDir, { recursive: true });
-    }
-    this.cacheFile = join(dataDir, "emoji-cache.json");
     this.legacyEmojisDir = join(process.cwd(), "assets", "emojis");
-    this.loadCache();
   }
 
-  /**
-   * Discord does not populate application.emojis.cache automatically —
-   * fetch it once before any existence checks.
-   */
+  // ── PG persistence ─────────────────────────────────────────────
+
+  private async loadCache(): Promise<void> {
+    try {
+      const loaded = await this.emojiRepo.getAll();
+      for (const [key, value] of loaded) {
+        this.cache.set(key, value);
+      }
+    } catch {
+      this.cache.clear();
+    }
+  }
+
+  private async saveEntry(name: string, entry: CacheEntry): Promise<void> {
+    this.cache.set(name, entry);
+    try {
+      await this.emojiRepo.set(name, { id: entry.id, name: entry.name ?? name, hash: entry.hash });
+    } catch (e) {
+      this.logger.warn(`Failed to save emoji cache entry to PG: ${name}`, e);
+    }
+  }
+
+  // ── Discord emoji cache ──────────────────────────────────────────
+
   private async ensureDiscordCacheFetched(): Promise<void> {
     if (this.emojiCacheFetched) return;
     await this.client.application?.emojis.fetch();
     this.emojiCacheFetched = true;
   }
 
-  private loadCache(): void {
-    try {
-      if (existsSync(this.cacheFile)) {
-        this.cache = JSON.parse(
-          readFileSync(this.cacheFile, "utf8"),
-        ) as CacheFile;
-      }
-    } catch {
-      this.cache = {};
-    }
+  private async ensureCacheLoaded(): Promise<void> {
+    if (this.cache.size > 0) return;
+    await this.loadCache();
   }
 
-  private saveCache(): void {
-    try {
-      writeFileSync(this.cacheFile, JSON.stringify(this.cache));
-    } catch (e) {
-      this.logger.warn("Failed to save emoji cache", e);
-    }
-  }
+  // ── Public API ───────────────────────────────────────────────────
 
-  /** Synchronous lookup used when building panel buttons. */
   get(action: EmojiKey, color: string): (CacheEntry & { name: string }) | null {
     const key = this.nameOf(action, color);
-    const entry = this.cache[key];
+    const entry = this.cache.get(key);
     if (!entry) return null;
-    // Older cache entries may lack the name — it equals the key.
     return { ...entry, name: entry.name ?? key };
   }
 
-  /**
-   * Resolve an action+color into a component-usable emoji.
-   * Returns uploaded application emoji when available, else null
-   * (caller falls back to unicode).
-   */
-  resolve(
-    action: EmojiKey,
-    color: string,
-  ): { id: string; name: string } | null {
+  resolve(action: EmojiKey, color: string): { id: string; name: string } | null {
     const entry = this.get(action, color);
     if (!entry) return null;
     return { id: entry.id, name: entry.name };
   }
 
-  /** Same as resolve but for arbitrary string keys (embed/select reuse). */
-  resolveAny(
-    action: string,
-    color: string,
-  ): { id: string; name: string } | null {
+  resolveAny(action: string, color: string): { id: string; name: string } | null {
     return this.resolve(action as EmojiKey, color);
   }
 
@@ -175,11 +149,6 @@ export class AppEmojiService {
     return `rm_${action}_${colorSlug(color)}`.toLowerCase();
   }
 
-  /**
-   * Every folder inside assets/emojis/packs/ is a REAL icon pack.
-   * Drop a new folder there and it is picked up automatically
-   * (see docs/emojis.md).
-   */
   private packDirs(): string[] {
     const packsDir = join(process.cwd(), "assets", "emojis", "packs");
     try {
@@ -193,29 +162,21 @@ export class AppEmojiService {
   }
 
   private sourceBuffer(action: EmojiKey): Buffer | null {
-    // Base names: key itself + mapped legacy name
-    // (e.g. soundpad -> "sounpad.png" in the niako pack).
     const bases = [action, SOURCE_FILE[action]].filter(
       (v, i, arr): v is string => Boolean(v) && arr.indexOf(v) === i,
     );
-
     const dirs = [...this.packDirs(), this.legacyEmojisDir];
-
     for (const dir of dirs) {
       for (const base of bases) {
         for (const ext of [".webp", ".png"]) {
           const p = join(dir, `${base}${ext}`);
-          if (existsSync(p)) {
-            return readFileSync(p);
-          }
+          if (existsSync(p)) return readFileSync(p);
         }
       }
     }
-
     return null;
   }
 
-  /** Discord emojis accept png/jpeg/gif — normalize webp/anything to png. */
   private async normalizeToPng(source: Buffer): Promise<Buffer> {
     const image = await loadImage(source);
     const canvas = createCanvas(image.width, image.height);
@@ -226,10 +187,10 @@ export class AppEmojiService {
 
   async ensureOne(action: EmojiKey, color: string): Promise<CacheEntry | null> {
     await this.ensureDiscordCacheFetched();
+    await this.ensureCacheLoaded();
 
     const name = this.nameOf(action, color);
-
-    const cached = this.cache[name];
+    const cached = this.cache.get(name);
     if (cached && this.client.application?.emojis.cache.has(cached.id)) {
       return cached;
     }
@@ -266,35 +227,31 @@ export class AppEmojiService {
       buffer = await this.uploader.tintBuffer(buffer, rgb[0], rgb[1], rgb[2]);
     }
 
-    // Content address: source bytes + target color ⇒ stable hash.
     const hash = createHash("md5")
       .update(source)
       .update(color.toLowerCase())
       .digest("hex");
 
-    const cached = this.cache[name];
+    const cached = this.cache.get(name);
     if (cached && cached.hash === hash && app.emojis.cache.has(cached.id)) {
       return cached;
     }
 
     // Same content under a different name → adopt instead of duplicating.
-    for (const [otherName, entry] of Object.entries(this.cache)) {
+    for (const [otherName, entry] of this.cache) {
       if (entry.hash === hash && otherName !== name) {
-        this.cache[name] = entry;
-        this.saveCache();
+        await this.saveEntry(name, entry);
         return entry;
       }
     }
 
     try {
-      // Delete stale emoji with same name but different content.
       const stale = app.emojis.cache.find((e) => e.name === name);
       if (stale) await stale.delete().catch(() => undefined);
 
       const created = await app.emojis.create({ attachment: buffer, name });
       const entry: CacheEntry = { id: created.id, name, hash };
-      this.cache[name] = entry;
-      this.saveCache();
+      await this.saveEntry(name, entry);
       this.logger.info(`Uploaded application emoji ${name} (${created.id})`);
       return entry;
     } catch (error) {
@@ -303,19 +260,11 @@ export class AppEmojiService {
     }
   }
 
-  /**
-   * Boot-time background sync: uploads original icons for all 10 actions
-   * so buttons have real custom emojis without any manual action.
-   */
   async syncDefaults(): Promise<number> {
     const defaults = Object.fromEntries(EMOJI_KEYS.map((k) => [k, "default"]));
     return this.ensureForConfig(defaults);
   }
 
-  /**
-   * Ensures all 10 action emojis for the given icon-color map.
-   * Returns how many were newly uploaded.
-   */
   async ensureForConfig(
     iconColors: IconColors | Record<string, string>,
     onProgress?: (done: number, total: number) => void | Promise<void>,
@@ -323,7 +272,7 @@ export class AppEmojiService {
     const colors = iconColors as Record<string, string>;
     const total = EMOJI_KEYS.length;
     let done = 0;
-    const before = Object.keys(this.cache).length;
+    const before = this.cache.size;
 
     for (const action of EMOJI_KEYS) {
       const color = colors[action] ?? "default";
@@ -336,6 +285,6 @@ export class AppEmojiService {
       if (onProgress) await onProgress(done, total);
     }
 
-    return Object.keys(this.cache).length - before;
+    return this.cache.size - before;
   }
 }

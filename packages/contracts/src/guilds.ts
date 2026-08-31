@@ -131,6 +131,7 @@ export interface GuildConfig {
   creatorChannelId: string | null;
   panelChannelId: string | null;
   panelMessageId: string | null;
+  logChannelId: string | null;
 
   defaultUserLimit: number;
   deleteDelaySeconds: number;

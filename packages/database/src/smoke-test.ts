@@ -20,6 +20,7 @@ const guild = await guildRepository.create({
   categoryId: "category",
   panelChannelId: null,
   panelMessageId: null,
+  logChannelId: null,
   defaultUserLimit: 0,
   deleteDelaySeconds: 5,
   creationCooldownSeconds: 3,

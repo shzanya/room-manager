@@ -62,6 +62,14 @@ export class LimitModal {
 
       await this.roomService.update(room.id, { userLimit: limit });
 
+      await svc().logService.send(guild, guild.id as import("@room-manager/shared").GuildId, {
+        type: "limit",
+        actorId: interaction.user.id,
+        details: [
+          limit === 0 ? "Без лимита" : `Лимит: ${limit}`,
+        ],
+      });
+
       const channel = await guild.channels.fetch(room.channelId);
       if (channel?.isVoiceBased()) {
         await channel.setUserLimit(limit);

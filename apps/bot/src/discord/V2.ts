@@ -146,3 +146,37 @@ export async function actorAvatarUrl(
     return null;
   }
 }
+
+/**
+ * Tribunal-style log container — no accent color, avatar thumbnail,
+ * header + subtitle + blockquote details. Used for log channel messages.
+ */
+export function v2Log(opts: {
+  title: string;
+  subtitle: string;
+  details?: string[];
+  avatarUrl?: string | null;
+}): { flags: number; components: [ContainerBuilder]; allowedMentions: { parse: [] } } {
+  const lines = [`# ${opts.title}`, opts.subtitle];
+  for (const d of opts.details ?? []) {
+    lines.push(`> ${d}`);
+  }
+
+  const section = new SectionBuilder().addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(lines.join("\n")),
+  );
+
+  if (opts.avatarUrl) {
+    section.setThumbnailAccessory(
+      new ThumbnailBuilder().setURL(opts.avatarUrl),
+    );
+  }
+
+  const container = new ContainerBuilder().addSectionComponents(section);
+
+  return {
+    flags: V2_FLAG,
+    components: [container],
+    allowedMentions: { parse: [] },
+  };
+}

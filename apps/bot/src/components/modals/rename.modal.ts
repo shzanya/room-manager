@@ -60,6 +60,12 @@ export class RenameModal {
 
       await this.roomService.update(room.id, { name: newName });
 
+      await svc().logService.send(guild, guild.id as import("@room-manager/shared").GuildId, {
+        type: "rename",
+        actorId: interaction.user.id,
+        details: [`на ${newName}`],
+      });
+
       const channel = await guild.channels.fetch(room.channelId);
       if (channel?.isVoiceBased()) {
         await channel.setName(newName);

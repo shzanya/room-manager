@@ -1,14 +1,23 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import {
+  boolean,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core";
 
-export const guilds = sqliteTable("guilds", {
-  id: text("id").primaryKey(),
+export const guilds = pgTable("guilds", {
+  id: uuid("id").primaryKey().defaultRandom(),
 
-  guildId: text("guild_id").notNull().unique(),
+  guildId: varchar("guild_id", { length: 20 }).notNull().unique(),
 
-  creatorChannelId: text("creator_channel_id"),
-  categoryId: text("category_id"),
-  panelChannelId: text("panel_channel_id"),
-  panelMessageId: text("panel_message_id"),
+  creatorChannelId: varchar("creator_channel_id", { length: 20 }),
+  categoryId: varchar("category_id", { length: 20 }),
+  panelChannelId: varchar("panel_channel_id", { length: 20 }),
+  panelMessageId: varchar("panel_message_id", { length: 20 }),
+  logChannelId: varchar("log_channel_id", { length: 20 }),
 
   defaultUserLimit: integer("default_user_limit").notNull().default(0),
   deleteDelaySeconds: integer("delete_delay_seconds").notNull().default(5),
@@ -19,22 +28,17 @@ export const guilds = sqliteTable("guilds", {
 
   bannerUrl: text("banner_url"),
 
-  iconPack: text("icon_pack").notNull().default("niako"),
+  iconPack: varchar("icon_pack", { length: 50 }).notNull().default("niako"),
   iconColors: text("icon_colors").notNull().default("{}"),
 
-  template: text("template").notNull().default("default"),
+  template: varchar("template", { length: 50 }).notNull().default("default"),
 
-  enabled: integer("enabled", {
-    mode: "boolean",
-  })
+  enabled: boolean("enabled").notNull().default(true),
+
+  createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
-    .default(true),
-
-  createdAt: integer("created_at", {
-    mode: "timestamp_ms",
-  }).notNull(),
-
-  updatedAt: integer("updated_at", {
-    mode: "timestamp_ms",
-  }).notNull(),
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });

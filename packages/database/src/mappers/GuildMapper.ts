@@ -28,6 +28,7 @@ export function mapGuildConfig(row: GuildRow): GuildConfig {
     creatorChannelId: row.creatorChannelId,
     panelChannelId: row.panelChannelId,
     panelMessageId: row.panelMessageId,
+    logChannelId: row.logChannelId,
 
     defaultUserLimit: row.defaultUserLimit,
     deleteDelaySeconds: row.deleteDelaySeconds,
@@ -39,8 +40,8 @@ export function mapGuildConfig(row: GuildRow): GuildConfig {
     iconColors: parseIconColors(row.iconColors),
     template: row.template ?? "default",
 
-    createdAt: new Date(row.createdAt),
-    updatedAt: new Date(row.updatedAt),
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
   };
 }
 

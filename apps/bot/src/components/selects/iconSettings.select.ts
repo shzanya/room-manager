@@ -1,7 +1,7 @@
 import type { Logger } from "@room-manager/logger";
 import type {
   ButtonInteraction,
-  RoleSelectMenuInteraction,
+  ChannelSelectMenuInteraction,
   StringSelectMenuInteraction,
 } from "discord.js";
 import { ButtonComponent, Discord, SelectMenuComponent } from "discordx";
@@ -74,6 +74,14 @@ export class IconSettingsSelects {
     );
   }
 
+  @ButtonComponent({ id: "setup:ctrl:logs" })
+  async onLogsToggle(interaction: ButtonInteraction): Promise<void> {
+    await this.safe(
+      () => this.iconSettings.handleLogsToggle(interaction),
+      "logs toggle",
+    );
+  }
+
   @SelectMenuComponent({ id: "setup:icons:pack" })
   async onPack(interaction: StringSelectMenuInteraction): Promise<void> {
     await this.safe(() => this.iconSettings.handlePack(interaction), "pack");
@@ -95,79 +103,29 @@ export class IconSettingsSelects {
     );
   }
 
-  // ── Roles & policies ───────────────────────────────────────────────
+  // ── Channels ────────────────────────────────────────────────────────
 
-  @SelectMenuComponent({ id: "setup:roles:action" })
-  async onRolesAction(interaction: StringSelectMenuInteraction): Promise<void> {
+  @SelectMenuComponent({ id: "setup:channels:category" })
+  async onChannelsCategory(interaction: ChannelSelectMenuInteraction): Promise<void> {
     await this.safe(
-      () => this.iconSettings.handleRolesAction(interaction),
-      "roles action",
+      () => this.iconSettings.handleChannelsCategory(interaction),
+      "channels category",
     );
   }
 
-  @ButtonComponent({ id: "setup:roles:home" })
-  async onRolesHome(interaction: ButtonInteraction): Promise<void> {
+  @SelectMenuComponent({ id: "setup:channels:creator" })
+  async onChannelsCreator(interaction: ChannelSelectMenuInteraction): Promise<void> {
     await this.safe(
-      () => this.iconSettings.handleRolesHome(interaction),
-      "roles home",
+      () => this.iconSettings.handleChannelsCreator(interaction),
+      "channels creator",
     );
   }
 
-  @SelectMenuComponent({ id: "setup:roles:mute-role" })
-  async onRolesMuteRole(interaction: RoleSelectMenuInteraction): Promise<void> {
+  @SelectMenuComponent({ id: "setup:channels:log" })
+  async onChannelsLog(interaction: ChannelSelectMenuInteraction): Promise<void> {
     await this.safe(
-      () => this.iconSettings.handleRolesMuteRole(interaction),
-      "roles mute role",
-    );
-  }
-
-  @SelectMenuComponent({ id: /^setup:roles:allow-groups:.+$/ })
-  async onRolesAllowGroups(
-    interaction: StringSelectMenuInteraction,
-  ): Promise<void> {
-    await this.safe(
-      () => this.iconSettings.handleRolesAllowGroups(interaction),
-      "roles allow groups",
-    );
-  }
-
-  @SelectMenuComponent({ id: /^setup:roles:deny-groups:.+$/ })
-  async onRolesDenyGroups(
-    interaction: StringSelectMenuInteraction,
-  ): Promise<void> {
-    await this.safe(
-      () => this.iconSettings.handleRolesDenyGroups(interaction),
-      "roles deny groups",
-    );
-  }
-
-  @SelectMenuComponent({ id: /^setup:roles:allow-roles:.+$/ })
-  async onRolesAllowRoles(
-    interaction: RoleSelectMenuInteraction,
-  ): Promise<void> {
-    await this.safe(
-      () => this.iconSettings.handleRolesAllowRoles(interaction),
-      "roles allow roles",
-    );
-  }
-
-  @SelectMenuComponent({ id: /^setup:roles:deny-roles:.+$/ })
-  async onRolesDenyRoles(
-    interaction: RoleSelectMenuInteraction,
-  ): Promise<void> {
-    await this.safe(
-      () => this.iconSettings.handleRolesDenyRoles(interaction),
-      "roles deny roles",
-    );
-  }
-
-  @SelectMenuComponent({ id: "setup:roles:admin-roles" })
-  async onRolesAdminRoles(
-    interaction: RoleSelectMenuInteraction,
-  ): Promise<void> {
-    await this.safe(
-      () => this.iconSettings.handleRolesAdminRoles(interaction),
-      "roles admin roles",
+      () => this.iconSettings.handleChannelsLog(interaction),
+      "channels log",
     );
   }
 }

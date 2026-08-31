@@ -9,7 +9,9 @@
     "@room-manager/config": "workspace:*",
     "@room-manager/contracts": "workspace:*",
     "@room-manager/shared": "workspace:*",
-    "drizzle-orm": "0.45.2"
+    "drizzle-orm": "0.45.2",
+    "pg": "^8.13.1",
+    "@types/pg": "^8.11.11"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

@@ -1,74 +1,53 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import type { Logger } from "@room-manager/logger";
+import type { GuildSettingsRepository } from "@room-manager/database";
 import type { GuildId } from "@room-manager/shared";
 
 export interface PanelText {
-  /** Custom panel title (empty string resets to template). */
   title: string | null;
-  /** Custom panel description (empty string resets to template). */
   description: string | null;
 }
 
-type StoreFile = Record<string, PanelText>;
+const EMPTY: PanelText = { title: null, description: null };
 
 /**
- * Per-guild panel text overrides (title/description), stored in
- * data/panel-text.json — same pattern as the emoji cache.
- * Keeps templates intact: an override simply replaces the template's text.
+ * Synchronous reads (in-memory cache) + async writes (PG).
  */
 export class PanelTextService {
-  private store: StoreFile = {};
-  private readonly storeFile: string;
+  private cache = new Map<string, PanelText>();
 
-  constructor(private readonly logger: Logger) {
-    const dataDir = join(process.cwd(), "..", "..", "data");
-    if (!existsSync(dataDir)) {
-      mkdirSync(dataDir, { recursive: true });
-    }
-    this.storeFile = join(dataDir, "panel-text.json");
-    this.load();
-  }
-
-  private load(): void {
-    try {
-      if (existsSync(this.storeFile)) {
-        this.store = JSON.parse(readFileSync(this.storeFile, "utf8"));
-      }
-    } catch {
-      this.store = {};
-    }
-  }
-
-  private save(): void {
-    try {
-      writeFileSync(this.storeFile, JSON.stringify(this.store));
-    } catch (e) {
-      this.logger.warn("Failed to save panel text store", e);
-    }
-  }
+  constructor(private readonly settingsRepo: GuildSettingsRepository) {}
 
   get(guildId: GuildId): PanelText {
-    return this.store[guildId] ?? { title: null, description: null };
+    return this.cache.get(guildId) ?? { ...EMPTY };
   }
 
-  set(
+  async set(
     guildId: GuildId,
     patch: Partial<Pick<PanelText, "title" | "description">>,
-  ): void {
+  ): Promise<void> {
     const current = this.get(guildId);
-    this.store[guildId] = { ...current, ...patch };
-    this.save();
+    const merged = { ...current, ...patch };
+    this.cache.set(guildId, merged);
+    await this.settingsRepo.updatePartial(guildId, {
+      panelText: merged as unknown as Record<string, unknown>,
+    });
   }
 
-  reset(guildId: GuildId): void {
-    delete this.store[guildId];
-    this.save();
+  async reset(guildId: GuildId): Promise<void> {
+    this.cache.delete(guildId);
+    await this.settingsRepo.updatePartial(guildId, {
+      panelText: { title: null, description: null },
+    });
   }
 
-  /** Whether any override exists for the guild. */
   hasOverride(guildId: GuildId): boolean {
-    const t = this.store[guildId];
+    const t = this.cache.get(guildId);
     return Boolean(t && (t.title || t.description));
+  }
+
+  hydrate(guildId: GuildId, raw: Record<string, unknown>): void {
+    this.cache.set(guildId, {
+      title: (raw.title as string | null) ?? null,
+      description: (raw.description as string | null) ?? null,
+    });
   }
 }

@@ -1,6 +1,5 @@
 import type { GuildService, RoomLifecycleService } from "@room-manager/core";
 import type { Logger } from "@room-manager/logger";
-import { createLogger } from "@room-manager/logger";
 import type { ChannelId, GuildId, UserId } from "@room-manager/shared";
 import {
   ActionRowBuilder,
@@ -22,7 +21,7 @@ import type { RoomChannelService } from "./RoomChannelService";
 import type { RoomCleanupService } from "./RoomCleanupService";
 import type { RoomCreationPolicy } from "./RoomCreationPolicy";
 import type { AppEmojiService } from "./services/AppEmojiService";
-import { MutesRegistry } from "./services/MutesRegistry";
+import type { MutesRegistry } from "./services/MutesRegistry";
 import { svc } from "./services/registry";
 
 /** Permission bits per Discord API overwrite hierarchy:
@@ -47,13 +46,13 @@ function isSoundboardDenied(channel: VoiceChannel): boolean {
 }
 
 export class VoiceStateHandler {
-  private readonly logger: Logger = createLogger({
-    prefix: "voice",
-    level: "info",
-  });
+  private readonly logger: Logger;
 
   /** Icon colors of the last-seen config, used for select menu emojis. */
   private currentIconColors: Record<string, string> = {};
+
+  /** Debounce timers for panel refresh per guild. */
+  private readonly panelRefreshTimers = new Map<GuildId, ReturnType<typeof setTimeout>>();
 
   private get appEmojis(): AppEmojiService {
     return svc().appEmojis;
@@ -65,7 +64,25 @@ export class VoiceStateHandler {
     private readonly channels: RoomChannelService,
     private readonly cleanup: RoomCleanupService,
     private readonly creationPolicy: RoomCreationPolicy,
-  ) {}
+    logger: Logger,
+  ) {
+    this.logger = logger;
+  }
+
+  /** Debounced panel refresh — coalesces rapid state changes per guild. */
+  private refreshPanel(guildId: GuildId): void {
+    const existing = this.panelRefreshTimers.get(guildId);
+    if (existing) clearTimeout(existing);
+
+    const timer = setTimeout(() => {
+      this.panelRefreshTimers.delete(guildId);
+      const guild = svc().client.guilds.cache.get(guildId);
+      if (guild) {
+        svc().setupService.refreshPanel(guild).catch(() => undefined);
+      }
+    }, 2000);
+    this.panelRefreshTimers.set(guildId, timer);
+  }
 
   public async handle(
     oldState: VoiceState,
@@ -80,57 +97,7 @@ export class VoiceStateHandler {
     }
 
     if (oldState.channelId) {
-      await this.onMemberLeftRoom(oldState);
       await this.handleLeave(oldState);
-    }
-  }
-
-  /**
-   * A member left a channel: if it was a managed room and they were
-   * muted there, the mute (and its linked role, if configured) is lifted.
-   */
-  private async onMemberLeftRoom(state: VoiceState): Promise<void> {
-    try {
-      const guild = state.guild;
-      const userId = state.id;
-      if (!guild || !state.channelId) return;
-
-      const room = await this.rooms.getByChannelId(
-        state.channelId as ChannelId,
-      );
-      if (!room) return;
-
-      if (!MutesRegistry.has(room.id, userId)) return;
-      MutesRegistry.remove(room.id, userId);
-
-      await this.applyMuteRole(guild, userId, false);
-    } catch (error) {
-      this.logger.warn("Failed to clean up mute on leave", error);
-    }
-  }
-
-  /** Grants/removes the configured in-room-mute role for a member. */
-  public async applyMuteRole(
-    guild: Guild,
-    userId: string,
-    muted: boolean,
-  ): Promise<void> {
-    const roleId = svc().rolePolicy.getConfig(guild.id as GuildId).muteRoleId;
-    if (!roleId) return;
-
-    const member = await guild.members.fetch(userId).catch(() => null);
-    if (!member) return;
-
-    try {
-      if (muted) {
-        if (!member.roles.cache.has(roleId)) {
-          await member.roles.add(roleId);
-        }
-      } else if (member.roles.cache.has(roleId)) {
-        await member.roles.remove(roleId);
-      }
-    } catch (error) {
-      this.logger.warn(`Failed to sync mute role for ${userId}`, error);
     }
   }
 
@@ -148,6 +115,16 @@ export class VoiceStateHandler {
 
     if (existingRoom) {
       await this.handleManagedRoomJoin(existingRoom.id, existingRoom.state);
+
+      if (existingRoom.state === "active" && state.member) {
+        await svc().logService.send(guild, guild.id as GuildId, {
+          type: "join",
+          userId: state.member.id,
+        });
+      }
+
+      this.refreshPanel(guild.id as GuildId);
+
       return;
     }
 
@@ -167,22 +144,9 @@ export class VoiceStateHandler {
       return;
     }
 
-    // Restriction roles: holders are not allowed to create rooms.
-    // Deny-wins policy from RolePolicyService.
-    if (
-      !svc().rolePolicy.canCreateRoom(
-        member.roles.cache.map((r) => r.id),
-        guild.id as GuildId,
-      )
-    ) {
-      this.logger.info(
-        `Room creation denied for ${member.user.tag}: role policy`,
-      );
-      return;
-    }
-
     // Owner rejoined the hub: send them back to their previous room
     // (active or cooldown) instead of creating yet another room.
+    // This check MUST run before role policy — owners always rejoin.
     const owned = await this.rooms.getLatestOwned(
       guild.id as GuildId,
       member.id as UserId,
@@ -195,8 +159,9 @@ export class VoiceStateHandler {
 
       if (channel?.isVoiceBased()) {
         if (owned.state === "cooldown") {
-          this.cleanup.cancel(owned.id);
+          await this.cleanup.cancel(owned.id);
           await this.rooms.activate(owned.id);
+          this.refreshPanel(guild.id as GuildId);
         }
 
         try {
@@ -211,14 +176,14 @@ export class VoiceStateHandler {
       }
     }
 
-    if (!this.creationPolicy.canCreate(guild.id as GuildId)) {
+    if (!(await this.creationPolicy.canCreate(guild.id as GuildId))) {
       this.logger.info(
         `Room creation ignored for guild ${guild.id}: creation cooldown active`,
       );
       return;
     }
 
-    this.creationPolicy.startCooldown(
+    await this.creationPolicy.startCooldown(
       guild.id as GuildId,
       config.creationCooldownSeconds,
     );
@@ -237,7 +202,7 @@ export class VoiceStateHandler {
   ): Promise<void> {
     switch (state) {
       case "cooldown": {
-        this.cleanup.cancel(roomId);
+        await this.cleanup.cancel(roomId);
 
         await this.rooms.activate(roomId);
 
@@ -294,13 +259,31 @@ export class VoiceStateHandler {
 
     await this.rooms.startCooldown(room.id);
 
-    await this.cleanup.schedule(
-      room.id,
-      guild.id as GuildId,
-      room.channelId as ChannelId,
-    );
+    await svc().logService.send(guild, guild.id as GuildId, {
+      type: "leave",
+      userId: state.id,
+    });
+
+    const guildConfig = await this.guilds.getById(guild.id as GuildId);
+    const controlSettings = svc().controlSettings.get(guild.id as GuildId);
+    const deleteDelay = guildConfig?.deleteDelaySeconds ?? 5;
+    const instant = controlSettings?.instantDelete ?? false;
+
+    try {
+      await this.cleanup.schedule(
+        room.id,
+        guild.id as GuildId,
+        room.channelId as ChannelId,
+        deleteDelay,
+        instant,
+      );
+    } catch (error) {
+      this.logger.error("Failed to schedule room cleanup", error);
+    }
 
     this.logger.info(`Room ${room.id} entered cooldown`);
+
+    this.refreshPanel(guild.id as GuildId);
   }
 
   private async createRoom(
@@ -323,10 +306,21 @@ export class VoiceStateHandler {
       userLimit,
     );
 
-    // Owner can always see and join their own room (the category denies
-    // @everyone; member overwrites are applied last in the hierarchy).
+    // Owner gets full control of their room (category denies @everyone).
     await voice.permissionOverwrites
-      .edit(member.id, { ViewChannel: true, Connect: true })
+      .edit(member.id, {
+        ViewChannel: true,
+        Connect: true,
+        Speak: true,
+        UseSoundboard: true,
+        UseExternalSounds: true,
+        UseEmbeddedActivities: true,
+        UseVAD: true,
+        MuteMembers: true,
+        DeafenMembers: true,
+        MoveMembers: true,
+        PrioritySpeaker: true,
+      })
       .catch(() => undefined);
 
     let roomId: import("@room-manager/shared").RoomId | undefined;
@@ -351,6 +345,14 @@ export class VoiceStateHandler {
       }
 
       this.logger.info(`Created room ${room.id} for ${member.user.tag}`);
+
+      await svc().logService.send(member.guild, guildId, {
+        type: "created",
+        actorId: member.id,
+        details: [room.name],
+      });
+
+      this.refreshPanel(guildId);
     } catch (error) {
       if (!roomId) {
         await this.channels.delete(voice).catch(() => undefined);

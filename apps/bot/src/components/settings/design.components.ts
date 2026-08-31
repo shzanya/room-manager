@@ -277,7 +277,7 @@ export class DesignComponents {
         return;
       }
 
-      svc().panelText.set(guild.id as GuildId, {
+      await svc().panelText.set(guild.id as GuildId, {
         ...(title ? { title } : {}),
         ...(description ? { description } : {}),
       });
@@ -323,7 +323,7 @@ export class DesignComponents {
         return;
       }
 
-      svc().panelText.reset(guild.id as GuildId);
+      await svc().panelText.reset(guild.id as GuildId);
       await svc().setupService.refreshPanel(guild);
 
       await this.iconSettings.renderDesignInto(

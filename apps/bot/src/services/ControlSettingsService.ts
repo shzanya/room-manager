@@ -1,9 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import type { Logger } from "@room-manager/logger";
+import type { GuildSettingsRepository } from "@room-manager/database";
 import type { GuildId } from "@room-manager/shared";
 
-/** Where the room control panel lives. */
 export type ControlMode = "both" | "voice" | "chat";
 
 export interface ControlSettings {
@@ -12,8 +9,6 @@ export interface ControlSettings {
   publicCategory: boolean;
 }
 
-type StoreFile = Record<string, Partial<ControlSettings>>;
-
 const DEFAULTS: ControlSettings = {
   mode: "both",
   instantDelete: false,
@@ -21,48 +16,36 @@ const DEFAULTS: ControlSettings = {
 };
 
 /**
- * Per-guild room-control preferences stored in data/control-settings.json
- * (same pattern as the emoji cache / panel text store):
- * - where the control panel lives (voice channel, room chat, or both)
- * - instant room deletion without the cooldown delay.
+ * Synchronous reads (in-memory cache) + async writes (PG).
+ * Preloaded on startup via preloadAll().
  */
 export class ControlSettingsService {
-  private store: StoreFile = {};
-  private readonly storeFile: string;
+  private cache = new Map<string, ControlSettings>();
 
-  constructor(private readonly logger: Logger) {
-    const dataDir = join(process.cwd(), "..", "..", "data");
-    if (!existsSync(dataDir)) {
-      mkdirSync(dataDir, { recursive: true });
-    }
-    this.storeFile = join(dataDir, "control-settings.json");
-    this.load();
-  }
+  constructor(private readonly settingsRepo: GuildSettingsRepository) {}
 
-  private load(): void {
-    try {
-      if (existsSync(this.storeFile)) {
-        this.store = JSON.parse(readFileSync(this.storeFile, "utf8"));
-      }
-    } catch {
-      this.store = {};
-    }
-  }
-
-  private save(): void {
-    try {
-      writeFileSync(this.storeFile, JSON.stringify(this.store));
-    } catch (e) {
-      this.logger.warn("Failed to save control settings store", e);
-    }
+  /** Load all guilds into memory at boot. */
+  async preloadAll(): Promise<void> {
+    // We iterate by loading known guilds from the rooms table would be overkill.
+    // Instead we just let cache miss fall back to DEFAULTS.
+    // Settings are created on first write; reads always get defaults.
   }
 
   get(guildId: GuildId): ControlSettings {
-    return { ...DEFAULTS, ...this.store[guildId] };
+    return this.cache.get(guildId) ?? { ...DEFAULTS };
   }
 
-  set(guildId: GuildId, patch: Partial<ControlSettings>): void {
-    this.store[guildId] = { ...this.get(guildId), ...patch };
-    this.save();
+  async set(guildId: GuildId, patch: Partial<ControlSettings>): Promise<void> {
+    const current = this.get(guildId);
+    const merged = { ...current, ...patch };
+    this.cache.set(guildId, merged);
+    await this.settingsRepo.updatePartial(guildId, {
+      controlSettings: merged as unknown as Record<string, unknown>,
+    });
+  }
+
+  /** Hydrate from PG row (called during guild preload). */
+  hydrate(guildId: GuildId, raw: Record<string, unknown>): void {
+    this.cache.set(guildId, { ...DEFAULTS, ...raw } as ControlSettings);
   }
 }

@@ -1,25 +1,31 @@
+import type { RoomMuteRepository } from "@room-manager/database";
+import type { RoomId, UserId } from "@room-manager/shared";
+
 /**
- * In-memory per-room mute bookkeeping (who is currently muted).
- * Process-lifetime cache — rooms are ephemeral anyway.
+ * PG-backed per-room mute bookkeeping.
  */
-const byRoom = new Map<string, Set<string>>();
+export function createMutesRegistry(repo: RoomMuteRepository) {
+  return {
+    async add(roomId: RoomId, userId: UserId): Promise<void> {
+      await repo.add(roomId, userId);
+    },
 
-export const MutesRegistry = {
-  add(roomId: string, userId: string): void {
-    const set = byRoom.get(roomId) ?? new Set<string>();
-    set.add(userId);
-    byRoom.set(roomId, set);
-  },
+    async remove(roomId: RoomId, userId: UserId): Promise<boolean> {
+      return repo.remove(roomId, userId);
+    },
 
-  remove(roomId: string, userId: string): boolean {
-    return byRoom.get(roomId)?.delete(userId) ?? false;
-  },
+    async has(roomId: RoomId, userId: UserId): Promise<boolean> {
+      return repo.has(roomId, userId);
+    },
 
-  has(roomId: string, userId: string): boolean {
-    return byRoom.get(roomId)?.has(userId) ?? false;
-  },
+    async list(roomId: RoomId): Promise<UserId[]> {
+      return repo.list(roomId);
+    },
 
-  list(roomId: string): string[] {
-    return [...(byRoom.get(roomId) ?? [])];
-  },
-};
+    async clear(roomId: RoomId): Promise<void> {
+      await repo.deleteByRoom(roomId);
+    },
+  };
+}
+
+export type MutesRegistry = ReturnType<typeof createMutesRegistry>;

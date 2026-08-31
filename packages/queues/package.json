@@ -1,0 +1,19 @@
+{
+  "name": "@room-manager/queues",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@room-manager/config": "workspace:*",
+    "@room-manager/contracts": "workspace:*",
+    "@room-manager/logger": "workspace:*",
+    "@room-manager/shared": "workspace:*",
+    "bullmq": "^5.40.2",
+    "ioredis": "^5.6.1"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

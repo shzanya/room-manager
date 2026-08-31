@@ -3,4 +3,4 @@ dist/
 coverage/
 
 data/
-.turbo/
+.turbo/deploy_key
