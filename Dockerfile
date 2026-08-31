@@ -24,10 +24,6 @@ FROM oven/bun:1.3.14-slim AS production
 
 WORKDIR /app
 
-# Security: non-root user
-RUN addgroup --system --gid 1001 roommanager && \
-    adduser --system --uid 1001 --ingroup roommanager roommanager
-
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/bot/node_modules ./apps/bot/node_modules
@@ -47,11 +43,6 @@ COPY packages/observability ./packages/observability
 COPY packages/shared ./packages/shared
 COPY packages/cache ./packages/cache
 COPY packages/queues ./packages/queues
-
-# Own everything to non-root
-RUN chown -R roommanager:roommanager /app
-
-USER roommanager
 
 ENV NODE_ENV=production
 
