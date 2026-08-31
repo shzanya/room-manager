@@ -1,8 +1,8 @@
-FROM oven/bun:1.3.14-slim AS deps
+FROM oven/bun:1.4-alpine
 
 WORKDIR /app
 
-COPY package.json tsconfig.json ./
+COPY package.json bun.lock tsconfig.json ./
 COPY apps/bot/package.json apps/bot/package.json
 COPY packages/config/package.json packages/config/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
@@ -26,27 +26,12 @@ COPY packages/shared ./packages/shared
 COPY packages/cache ./packages/cache
 COPY packages/queues ./packages/queues
 
-RUN bun install
-
-# ── Runtime: node + tsx (Bun Linux has decorator metadata bug) ─────
-FROM node:22-slim
-
-RUN npm install -g tsx
-
-WORKDIR /app
-
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps ./apps
-COPY --from=deps /app/packages ./packages
-COPY --from=deps /app/package.json /app/tsconfig.json ./
+RUN bun install --frozen-lockfile
 
 ENV NODE_ENV=production
-
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD node -e "fetch('http://localhost:9090/health').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))"
 
 EXPOSE 9090
 
 WORKDIR /app/apps/bot
 
-CMD ["tsx", "src/shard.ts"]
+CMD ["bun", "run", "src/shard.ts"]
