@@ -1,6 +1,7 @@
 import "reflect-metadata";
 
 
+import { dirname, importx } from "@discordx/importer";
 import { loadEnv } from "@room-manager/config";
 import {
   GuildService,
@@ -205,35 +206,9 @@ if (!isShard) {
     );
   }
 
-  await Promise.all([
-    import("./commands/setup.command.ts"),
-    import("./commands/stats.command.ts"),
-    import("./events/interactionError.event.ts"),
-    import("./events/ready.event.ts"),
-    import("./events/voiceStateUpdate.event.ts"),
-    import("./components/buttons/accessAdd.button.ts"),
-    import("./components/buttons/accessRemove.button.ts"),
-    import("./components/buttons/hide.button.ts"),
-    import("./components/buttons/info.button.ts"),
-    import("./components/buttons/kick.button.ts"),
-    import("./components/buttons/limit.button.ts"),
-    import("./components/buttons/lock.button.ts"),
-    import("./components/buttons/mute.button.ts"),
-    import("./components/buttons/owner.button.ts"),
-    import("./components/buttons/rename.button.ts"),
-    import("./components/buttons/reset.button.ts"),
-    import("./components/buttons/unlock.button.ts"),
-    import("./components/buttons/unmute.button.ts"),
-    import("./components/selects/accessAdd.select.ts"),
-    import("./components/selects/accessRemove.select.ts"),
-    import("./components/selects/iconSettings.select.ts"),
-    import("./components/selects/kick.select.ts"),
-    import("./components/selects/owner.select.ts"),
-    import("./components/selects/voiceControl.select.ts"),
-    import("./components/modals/limit.modal.ts"),
-    import("./components/modals/rename.modal.ts"),
-    import("./components/settings/design.components.ts"),
-  ]);
+  await importx(
+    `${dirname(import.meta.url)}/{events,commands,components}/**/*.ts`,
+  );
 
   await client.login(env.DISCORD_TOKEN);
 
