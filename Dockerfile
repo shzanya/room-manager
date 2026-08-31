@@ -41,6 +41,10 @@ COPY --from=deps /app/apps ./apps
 COPY --from=deps /app/packages ./packages
 COPY --from=deps /app/package.json ./
 COPY --from=deps /app/tsconfig.json ./
+COPY --from=deps /app/drizzle.config.ts ./
+
+COPY docker/entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
 
 ENV NODE_ENV=production
 
@@ -48,4 +52,4 @@ EXPOSE 9090
 
 WORKDIR /app/apps/bot
 
-CMD ["node", "--import", "tsx", "src/shard.ts"]
+CMD ["/app/entrypoint.sh"]
