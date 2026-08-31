@@ -12,5 +12,6 @@ coverage
 data
 tests
 docs
-bun.lock
 drizzle
+deploy_key
+deploy_key.pub
