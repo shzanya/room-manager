@@ -62,7 +62,7 @@ function formatBytes(bytes: number): string {
 export class StatsCommand {
   @Slash({
     name: "stats",
-    description: "Bot statistics: cluster, shards, performance",
+    description: "Bot statistics: cluster, shards, performance, system",
     defaultMemberPermissions: [PermissionFlagsBits.Administrator],
   })
   async stats(
