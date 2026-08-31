@@ -1,6 +1,6 @@
 import "reflect-metadata";
 
-import { dirname, importx } from "@discordx/importer";
+
 import { loadEnv } from "@room-manager/config";
 import {
   GuildService,
@@ -205,37 +205,35 @@ if (!isShard) {
     );
   }
 
-  await importx(
-    [
-      `${dirname(import.meta.url)}/commands/setup.command.ts`,
-      `${dirname(import.meta.url)}/commands/stats.command.ts`,
-      `${dirname(import.meta.url)}/events/interactionError.event.ts`,
-      `${dirname(import.meta.url)}/events/ready.event.ts`,
-      `${dirname(import.meta.url)}/events/voiceStateUpdate.event.ts`,
-      `${dirname(import.meta.url)}/components/buttons/accessAdd.button.ts`,
-      `${dirname(import.meta.url)}/components/buttons/accessRemove.button.ts`,
-      `${dirname(import.meta.url)}/components/buttons/hide.button.ts`,
-      `${dirname(import.meta.url)}/components/buttons/info.button.ts`,
-      `${dirname(import.meta.url)}/components/buttons/kick.button.ts`,
-      `${dirname(import.meta.url)}/components/buttons/limit.button.ts`,
-      `${dirname(import.meta.url)}/components/buttons/lock.button.ts`,
-      `${dirname(import.meta.url)}/components/buttons/mute.button.ts`,
-      `${dirname(import.meta.url)}/components/buttons/owner.button.ts`,
-      `${dirname(import.meta.url)}/components/buttons/rename.button.ts`,
-      `${dirname(import.meta.url)}/components/buttons/reset.button.ts`,
-      `${dirname(import.meta.url)}/components/buttons/unlock.button.ts`,
-      `${dirname(import.meta.url)}/components/buttons/unmute.button.ts`,
-      `${dirname(import.meta.url)}/components/selects/accessAdd.select.ts`,
-      `${dirname(import.meta.url)}/components/selects/accessRemove.select.ts`,
-      `${dirname(import.meta.url)}/components/selects/iconSettings.select.ts`,
-      `${dirname(import.meta.url)}/components/selects/kick.select.ts`,
-      `${dirname(import.meta.url)}/components/selects/owner.select.ts`,
-      `${dirname(import.meta.url)}/components/selects/voiceControl.select.ts`,
-      `${dirname(import.meta.url)}/components/modals/limit.modal.ts`,
-      `${dirname(import.meta.url)}/components/modals/rename.modal.ts`,
-      `${dirname(import.meta.url)}/components/settings/design.components.ts`,
-    ],
-  );
+  await Promise.all([
+    import("./commands/setup.command.ts"),
+    import("./commands/stats.command.ts"),
+    import("./events/interactionError.event.ts"),
+    import("./events/ready.event.ts"),
+    import("./events/voiceStateUpdate.event.ts"),
+    import("./components/buttons/accessAdd.button.ts"),
+    import("./components/buttons/accessRemove.button.ts"),
+    import("./components/buttons/hide.button.ts"),
+    import("./components/buttons/info.button.ts"),
+    import("./components/buttons/kick.button.ts"),
+    import("./components/buttons/limit.button.ts"),
+    import("./components/buttons/lock.button.ts"),
+    import("./components/buttons/mute.button.ts"),
+    import("./components/buttons/owner.button.ts"),
+    import("./components/buttons/rename.button.ts"),
+    import("./components/buttons/reset.button.ts"),
+    import("./components/buttons/unlock.button.ts"),
+    import("./components/buttons/unmute.button.ts"),
+    import("./components/selects/accessAdd.select.ts"),
+    import("./components/selects/accessRemove.select.ts"),
+    import("./components/selects/iconSettings.select.ts"),
+    import("./components/selects/kick.select.ts"),
+    import("./components/selects/owner.select.ts"),
+    import("./components/selects/voiceControl.select.ts"),
+    import("./components/modals/limit.modal.ts"),
+    import("./components/modals/rename.modal.ts"),
+    import("./components/settings/design.components.ts"),
+  ]);
 
   await client.login(env.DISCORD_TOKEN);
 
