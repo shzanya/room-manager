@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.example
+!.env.docker
 
 node_modules/
 dist/

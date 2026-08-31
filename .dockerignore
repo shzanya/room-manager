@@ -1,0 +1,16 @@
+node_modules
+.git
+.github
+.turbo
+dist
+coverage
+*.log
+.env
+.env.*
+!.env.example
+!.env.docker
+data
+tests
+docs
+bun.lock
+drizzle

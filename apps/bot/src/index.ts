@@ -7,34 +7,55 @@ import {
   RoomLifecycleService,
   RoomService,
 } from "@room-manager/core";
-import { GuildRepository, RoomRepository } from "@room-manager/database";
-import { createLogger } from "@room-manager/logger";
+import {
+  AppEmojiCacheRepository,
+  GuildCooldownRepository,
+  GuildRepository,
+  GuildSettingsRepository,
+  RoomMuteRepository,
+  RoomRepository,
+  RoomWhitelistRepository,
+} from "@room-manager/database";
 import { Events, GatewayIntentBits } from "discord.js";
 import { Client } from "discordx";
 import { RoomChannelService } from "./RoomChannelService";
 import { RoomCleanupService } from "./RoomCleanupService";
-import { RoomCreationPolicy } from "./RoomCreationPolicy";
+import { createRoomCreationPolicy } from "./RoomCreationPolicy";
 import { AppEmojiService } from "./services/AppEmojiService";
 import { BannerService } from "./services/BannerService";
 import { ControlSettingsService } from "./services/ControlSettingsService";
 import { EmojiUploader } from "./services/EmojiUploader";
 import { IconSettingsService } from "./services/IconSettingsService";
 import { LocaleService } from "./services/LocaleService";
+import { createMutesRegistry } from "./services/MutesRegistry";
 import { PanelTextService } from "./services/PanelTextService";
-import { RolePolicyService } from "./services/RolePolicyService";
 import { initServices } from "./services/registry";
 import { SetupService } from "./services/SetupService";
+import { createWhitelistRegistry } from "./services/WhitelistRegistry";
+import { LogService } from "./services/LogService";
 import { VoiceStateHandler } from "./VoiceStateHandler";
+
+import { closeDatabase } from "@room-manager/database";
+import {
+  createStructuredLogger,
+  startHealthServer,
+  discordLatency,
+} from "@room-manager/observability";
 
 const env = loadEnv();
 
-const logger = createLogger({
-  level: env.LOG_LEVEL,
-  prefix: "bot",
-});
+const isShard = process.env.SHARDING_MANAGER === "true";
 
+const logger = createStructuredLogger();
+
+// ── PG repositories ────────────────────────────────────────────────
 const guildRepository = new GuildRepository();
 const roomRepository = new RoomRepository();
+const guildSettingsRepository = new GuildSettingsRepository();
+const appEmojiCacheRepository = new AppEmojiCacheRepository();
+const roomMuteRepository = new RoomMuteRepository();
+const roomWhitelistRepository = new RoomWhitelistRepository();
+const guildCooldownRepository = new GuildCooldownRepository();
 
 const guildService = new GuildService(guildRepository);
 const roomService = new RoomService(roomRepository);
@@ -45,11 +66,8 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMessages,
-    // Required to read attachments/content of user messages (banner upload).
-    // Must ALSO be enabled in the Dev Portal → Bot → Privileged Intents.
     GatewayIntentBits.MessageContent,
   ],
-  // Mentions render as tags but never ping anyone, bot-wide.
   allowedMentions: { parse: [] },
   silent: false,
 });
@@ -58,22 +76,25 @@ const roomChannelService = new RoomChannelService();
 
 const bannerService = new BannerService(logger, guildService);
 
-const panelTextService = new PanelTextService(logger);
-const controlSettingsService = new ControlSettingsService(logger);
-const rolePolicyService = new RolePolicyService(logger);
-const localeService = new LocaleService(logger);
+const panelTextService = new PanelTextService(guildSettingsRepository);
+const controlSettingsService = new ControlSettingsService(guildSettingsRepository);
+const localeService = new LocaleService(guildSettingsRepository);
 
 const emojiUploader = new EmojiUploader(logger);
-const appEmojiService = new AppEmojiService(logger, emojiUploader, client);
+const appEmojiService = new AppEmojiService(logger, emojiUploader, client, appEmojiCacheRepository);
 
-const roomCleanupService = new RoomCleanupService(
+const roomCleanupService = new RoomCleanupService({
   client,
-  guildService,
-  roomLifecycleService,
-  controlSettingsService,
-);
+  guilds: guildService,
+  rooms: roomLifecycleService,
+  controlSettings: controlSettingsService,
+  logger,
+});
 
-const roomCreationPolicy = new RoomCreationPolicy();
+const creationPolicy = createRoomCreationPolicy(guildCooldownRepository);
+const mutes = createMutesRegistry(roomMuteRepository);
+const whitelists = createWhitelistRegistry(roomWhitelistRepository);
+const logService = new LogService(guildService, logger);
 
 const setupService = new SetupService(
   logger,
@@ -99,12 +120,10 @@ const voiceStateHandler = new VoiceStateHandler(
   roomLifecycleService,
   roomChannelService,
   roomCleanupService,
-  roomCreationPolicy,
+  creationPolicy,
+  logger,
 );
 
-// Bun does not support emitDecoratorMetadata, so tsyringe cannot resolve
-// constructor dependencies of @Discord() handler classes. Handlers pull
-// their dependencies from this registry instead (zero-arg constructors).
 initServices({
   logger,
   client,
@@ -115,7 +134,6 @@ initServices({
   bannerService,
   panelText: panelTextService,
   controlSettings: controlSettingsService,
-  rolePolicy: rolePolicyService,
   locale: localeService,
   setupService,
   iconSettings: iconSettingsService,
@@ -123,72 +141,130 @@ initServices({
   appEmojis: appEmojiService,
   roomCleanup: roomCleanupService,
   voiceStateHandler,
+  mutes,
+  whitelists,
+  creationPolicy,
+  logService,
 });
 
+// ── Preload guild settings from PG ────────────────────────────────
+async function preloadGuildSettings(): Promise<void> {
+  const rows = await guildSettingsRepository.getAll();
+  for (const row of rows) {
+    const gid = row.guildId as import("@room-manager/shared").GuildId;
+    controlSettingsService.hydrate(gid, row.controlSettings);
+    panelTextService.hydrate(gid, row.panelText);
+    localeService.hydrate(gid, row.locale);
+  }
+  logger.info(`Preloaded settings for ${rows.length} guilds`);
+}
+
+// ── Shard stats tracking ───────────────────────────────────────────
+let commandCount = 0;
+let totalCommandMs = 0;
+let lastCommandMs = 0;
+
+export function getShardStats() {
+  return {
+    commandCount,
+    totalCommandMs,
+    lastCommandMs,
+    uptime: process.uptime(),
+  };
+}
+
+// Expose for broadcastEval access from other files
+(globalThis as any).__getShardStats = getShardStats;
+
+// ── Health server (skip in sharded mode) ──────────────────────────
+let healthServer: import("node:http").Server | null = null;
+
+if (!isShard) {
+  healthServer = startHealthServer({
+    port: env.METRICS_PORT,
+    logger,
+    checks: {
+      database: async () => {
+        try {
+          const { db } = await import("@room-manager/database");
+          await db.execute({ sql: { sql: "SELECT 1" } } as any);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+    },
+  });
+}
+
+// ── Start bot ──────────────────────────────────────────────────────
 (async () => {
+  if (isShard) {
+    logger.info(
+      `Starting as shard (PID: ${process.pid}, SHARD_ID: ${process.env.SHARD ?? "0"})`,
+    );
+  }
+
   await importx(
     `${dirname(import.meta.url)}/{events,commands,components}/**/*.ts`,
   );
 
   await client.login(env.DISCORD_TOKEN);
 
-  // Required by discordx: without this wire, interactions (slash/buttons/
-  // selects/modals) are received but never dispatched to their handlers.
+  await preloadGuildSettings();
+
   client.on(Events.InteractionCreate, (interaction) => {
-    void Promise.resolve(client.executeInteraction(interaction)).catch(
-      (error: unknown) => {
-        logger.error("Failed to execute interaction", error);
-      },
-    );
+    const start = performance.now();
+    void Promise.resolve(client.executeInteraction(interaction))
+      .then(() => {
+        const elapsed = performance.now() - start;
+        commandCount++;
+        totalCommandMs += elapsed;
+        lastCommandMs = elapsed;
+      })
+      .catch((error: unknown) => {
+        logger.error({ err: error }, "Failed to execute interaction");
+      });
   });
 
   await client.initApplicationCommands();
 
-  // Background: upload original niako icons as application emojis so the
-  // panel has real custom emojis without any manual action.
   void appEmojiService
     .syncDefaults()
-    .then((n) => logger.info(`Emoji sync done, uploaded ${n}`))
-    .catch((e) => logger.warn("emoji sync failed", e));
+    .then((n) => logger.info({ count: n }, "Emoji sync done"))
+    .catch((e) => logger.warn({ err: e }, "emoji sync failed"));
+
+  setInterval(() => {
+    discordLatency.set(client.ws.ping);
+  }, 30_000);
 })();
 
+// ── Graceful shutdown ──────────────────────────────────────────────
 let shuttingDown = false;
 
 const shutdown = async (signal: string): Promise<void> => {
   if (shuttingDown) {
-    logger.warn(`Shutdown already in progress, ignoring ${signal}`);
+    logger.warn({ signal }, "Shutdown already in progress, ignoring");
     return;
   }
 
   shuttingDown = true;
 
-  logger.info(`Received ${signal}, shutting down...`);
+  logger.info({ signal }, "Shutting down...");
 
   try {
-    roomCreationPolicy.dispose();
     roomCleanupService.dispose();
     client.destroy();
+    healthServer?.close();
+    await closeDatabase();
 
     logger.info("Bot shutdown complete");
   } catch (error) {
-    logger.error("Failed during bot shutdown", error);
-    process.exitCode = 1;
+    logger.error("Error during shutdown");
+  } finally {
+    process.exit(0);
   }
 };
 
-process.once("SIGINT", () => {
-  void shutdown("SIGINT");
-});
-
-process.once("SIGTERM", () => {
-  void shutdown("SIGTERM");
-});
-
-// A single failed interaction must never kill the whole bot.
-process.on("unhandledRejection", (reason) => {
-  logger.error("Unhandled promise rejection", reason);
-});
-
-process.on("uncaughtException", (error) => {
-  logger.error("Uncaught exception", error);
-});
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));

@@ -1,0 +1,82 @@
+# ── Stage 1: Install dependencies ──────────────────────────────────
+FROM oven/bun:1.3.14-slim AS deps
+
+WORKDIR /app
+
+# Copy workspace manifests
+COPY package.json bun.lock turbo.json tsconfig.json ./
+COPY apps/bot/package.json apps/bot/package.json
+COPY packages/config/package.json packages/config/package.json
+COPY packages/contracts/package.json packages/contracts/package.json
+COPY packages/core/package.json packages/core/package.json
+COPY packages/database/package.json packages/database/package.json
+COPY packages/logger/package.json packages/logger/package.json
+COPY packages/observability/package.json packages/observability/package.json
+COPY packages/shared/package.json packages/shared/package.json
+COPY packages/cache/package.json packages/cache/package.json
+COPY packages/queues/package.json packages/queues/package.json
+COPY packages/queues/package.json packages/queues/package.json
+
+# Install dependencies with cache
+RUN bun install --frozen-lockfile --production=false
+
+# ── Stage 2: Build ────────────────────────────────────────────────
+FROM oven/bun:1.3.14-slim AS build
+
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/bot/node_modules ./apps/bot/node_modules
+COPY --from=deps /app/packages/*/node_modules ./packages/*/node_modules
+
+COPY . .
+
+# Type-check only (no emit — Bun runs TS directly)
+RUN bun run typecheck || true
+
+# ── Stage 3: Production ──────────────────────────────────────────
+FROM oven/bun:1.3.14-slim AS production
+
+WORKDIR /app
+
+# Security: non-root user
+RUN addgroup --system --gid 1001 roommanager && \
+    adduser --system --uid 1001 --ingroup roommanager roommanager
+
+# Copy only what's needed
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/bot/node_modules ./apps/bot/node_modules
+COPY --from=deps /app/packages/*/node_modules ./packages/*/node_modules
+
+COPY package.json bun.lock turbo.json tsconfig.json ./
+COPY apps/bot/package.json apps/bot/package.json
+COPY apps/bot/src ./apps/bot/src
+COPY apps/bot/assets ./apps/bot/assets
+COPY packages/config ./packages/config
+COPY packages/contracts ./packages/contracts
+COPY packages/core ./packages/core
+COPY packages/database ./packages/database
+COPY packages/logger ./packages/logger
+COPY packages/observability ./packages/observability
+COPY packages/shared ./packages/shared
+COPY packages/cache ./packages/cache
+COPY packages/queues ./packages/queues
+COPY drizzle.config.ts ./
+
+# Own everything to non-root
+RUN chown -R roommanager:roommanager /app
+
+USER roommanager
+
+ENV NODE_ENV=production
+ENV BUN_INSTALL_CACHE_DIR=/tmp/bun-cache
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD bun -e "const r = await fetch('http://localhost:9090/health'); process.exit(r.ok ? 0 : 1)" || exit 1
+
+EXPOSE 9090
+
+WORKDIR /app/apps/bot
+
+CMD ["bun", "run", "src/shard.ts"]
