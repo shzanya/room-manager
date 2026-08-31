@@ -15,7 +15,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-roommanager}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./packages/database/scripts:/docker-entrypoint-initdb.d:ro
