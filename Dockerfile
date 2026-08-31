@@ -2,7 +2,7 @@ FROM oven/bun:1.3.14-slim AS deps
 
 WORKDIR /app
 
-COPY package.json ./
+COPY package.json tsconfig.json ./
 COPY apps/bot/package.json apps/bot/package.json
 COPY packages/config/package.json packages/config/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
@@ -38,8 +38,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps ./apps
 COPY --from=deps /app/packages ./packages
-COPY --from=deps /app/package.json ./
-COPY --from=deps /app/tsconfig.json ./
+COPY --from=deps /app/package.json /app/tsconfig.json ./
 
 ENV NODE_ENV=production
 
