@@ -1,75 +1,49 @@
 #!/bin/bash
-# ── Room Manager — Server First-Time Setup ────────────────────────
-# Run this ONCE on your server as root:
-#   bash <(curl -s raw.githubusercontent.com/shzanya/room-manager/main/scripts/server-setup.sh)
-set -euo pipefail
+set -e
 
-echo "╔══════════════════════════════════════════════════╗"
-echo "║   Room Manager — Server Setup                    ║"
-echo "╚══════════════════════════════════════════════════╝"
+echo "=== Room Manager — Server Setup ==="
 
-DEPLOY_DIR="/root/room-manager"
-REPO="https://github.com/shzanya/room-manager.git"
-
-# ── Install Docker ────────────────────────────────────────────────
-if ! command -v docker &> /dev/null; then
-  echo "→ Installing Docker..."
-  curl -fsSL https://get.docker.com | sh
-  systemctl enable --now docker
-  echo "✅ Docker installed"
+# 1. Check/install bun
+if ! command -v bun &>/dev/null; then
+  echo "[1/6] Installing bun..."
+  curl -fsSL https://bun.sh/install | bash
+  export BUN_INSTALL="$HOME/.bun"
+  export PATH="$BUN_INSTALL/bin:$PATH"
 else
-  echo "✅ Docker already installed"
+  echo "[1/6] bun already installed: $(bun --version)"
 fi
 
-# ── Install Docker Compose plugin ────────────────────────────────
-if ! docker compose version &> /dev/null; then
-  echo "→ Installing Docker Compose plugin..."
-  apt-get update && apt-get install -y docker-compose-plugin
-  echo "✅ Docker Compose installed"
+# 2. Check/install node
+if ! command -v node &>/dev/null; then
+  echo "[2/6] Installing node via nvm..."
+  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+  export NVM_DIR="$HOME/.nvm"
+  . "$NVM_DIR/nvm.sh"
+  nvm install 22
 else
-  echo "✅ Docker Compose already installed"
+  echo "[2/6] node already installed: $(node --version)"
 fi
 
-# ── Clone repo ────────────────────────────────────────────────────
-if [ -d "$DEPLOY_DIR" ]; then
-  echo "→ Updating existing repo..."
-  cd "$DEPLOY_DIR"
-  git pull origin main
-else
-  echo "→ Cloning repo..."
-  git clone "$REPO" "$DEPLOY_DIR"
-  cd "$DEPLOY_DIR"
-fi
+# 3. Install dependencies
+echo "[3/6] Installing dependencies..."
+cd /root/room-manager
+bun install --frozen-lockfile
+bun add tsx
 
-# ── Setup .env ────────────────────────────────────────────────────
-if [ ! -f .env ]; then
-  cp .env.docker .env
-  echo ""
-  echo "⚠  EDIT .env with your tokens:"
-  echo "   nano $DEPLOY_DIR/.env"
-  echo ""
-  echo "   Required:"
-  echo "     DISCORD_TOKEN=your_bot_token"
-  echo "     DISCORD_CLIENT_ID=your_client_id"
-  echo ""
-  echo "   Then run:"
-  echo "     cd $DEPLOY_DIR && make deploy"
-  exit 0
-fi
+# 4. Start PostgreSQL + Redis
+echo "[4/6] Starting infrastructure..."
+docker compose -f docker-compose.infra.yml up -d
+echo "Waiting for PostgreSQL..."
+sleep 5
 
-# ── Build and start ───────────────────────────────────────────────
-echo "→ Building and starting..."
-make deploy
+# 5. Create tables
+echo "[5/6] Creating database tables..."
+docker compose -f docker-compose.infra.yml exec -T postgres psql -U roommanager -d room_manager < packages/database/scripts/001_init.sql
 
+# 6. Start bot
+echo "[6/6] Starting bot..."
 echo ""
-echo "═══════════════════════════════════════════════════"
-echo "  ✅ Server is ready!"
-echo ""
-echo "  Bot:     http://localhost:9090/health"
-echo "  Nginx:   http://localhost:80/nginx-health"
-echo "  Postgres: localhost:5432"
-echo "  Redis:   localhost:6379"
-echo ""
-echo "  Auto-deploy is now active."
-echo "  Push to main → bot updates automatically."
-echo "═══════════════════════════════════════════════════"
+echo "=== Setup complete! ==="
+echo "Run the bot with:"
+echo "  cd /root/room-manager"
+echo "  bun run start"
