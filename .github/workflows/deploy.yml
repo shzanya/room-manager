@@ -1,0 +1,80 @@
+# ── Room Manager — Auto Deploy ────────────────────────────────────
+# Triggers on push to main. SSHs into the server, pulls latest,
+# rebuilds Docker image, and restarts services.
+#
+# Required GitHub Secrets:
+#   DEPLOY_HOST     — server IP (85.93.9.106)
+#   DEPLOY_KEY      — SSH private key
+#   DEPLOY_USER     — SSH user (root)
+#   DEPLOY_PATH     — project path on server (/root/room-manager)
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          port: 22
+          script_stop: true
+          script: |
+            set -euo pipefail
+
+            DEPLOY_DIR="${{ secrets.DEPLOY_PATH }}"
+            echo "═══════════════════════════════════════"
+            echo "  Room Manager — Auto Deploy"
+            echo "═══════════════════════════════════════"
+
+            cd "$DEPLOY_DIR"
+
+            # Pull latest code
+            echo "→ Pulling latest changes..."
+            git fetch origin main
+            git reset --hard origin/main
+
+            # Rebuild and restart
+            echo "→ Rebuilding Docker images..."
+            docker compose build --no-cache bot
+
+            echo "→ Restarting services..."
+            docker compose up -d --remove-orphans
+
+            # Wait for health
+            echo "→ Waiting for bot to be healthy..."
+            sleep 10
+
+            # Health check
+            if curl -sf http://localhost:9090/health > /dev/null 2>&1; then
+              echo "✅ Bot is healthy!"
+            else
+              echo "⚠  Bot health check failed, checking logs..."
+              docker compose logs bot --tail=20
+              exit 1
+            fi
+
+            # Show status
+            echo ""
+            echo "── Status ──"
+            docker compose ps
+            echo ""
+            echo "✅ Deploy complete!"
