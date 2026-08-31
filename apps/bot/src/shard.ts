@@ -7,10 +7,13 @@ const env = loadEnv();
 const CLUSTER_NAME = detectClusterName();
 const TOTAL_SHARDS = 3;
 
+const isNode = process.execPath.includes("node");
+
 const manager = new ShardingManager("./src/index.ts", {
   token: env.DISCORD_TOKEN,
   totalShards: TOTAL_SHARDS,
   respawn: true,
+  ...(isNode ? { execArgv: ["--import", "tsx"] } : {}),
 });
 
 manager.on("shardCreate", (shard) => {

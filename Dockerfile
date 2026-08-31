@@ -1,4 +1,4 @@
-FROM oven/bun:1.4-alpine
+FROM oven/bun:1.4-alpine AS deps
 
 WORKDIR /app
 
@@ -28,10 +28,24 @@ COPY packages/queues ./packages/queues
 
 RUN bun install --frozen-lockfile
 
+# tsx локально, чтобы node --import tsx находил пакет
+RUN bun add tsx
+
+# ── Runtime: Node.js + tsx (Bun Linux emitDecoratorMetadata bug) ──
+FROM node:22-alpine
+
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps ./apps
+COPY --from=deps /app/packages ./packages
+COPY --from=deps /app/package.json ./
+COPY --from=deps /app/tsconfig.json ./
+
 ENV NODE_ENV=production
 
 EXPOSE 9090
 
 WORKDIR /app/apps/bot
 
-CMD ["bun", "run", "src/shard.ts"]
+CMD ["node", "--import", "tsx", "src/shard.ts"]
