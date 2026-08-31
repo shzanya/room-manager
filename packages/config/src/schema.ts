@@ -16,6 +16,11 @@ export const envSchema = z.object({
 
   METRICS_PORT: z.coerce.number().int().positive().default(9090),
 
+  DATABASE_SSL: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+
   CLUSTER_NAME: z.string().optional(),
 });
 
