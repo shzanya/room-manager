@@ -2,7 +2,7 @@ FROM oven/bun:1.3.14-slim
 
 WORKDIR /app
 
-COPY package.json tsconfig.json ./
+COPY package.json ./
 COPY apps/bot/package.json apps/bot/package.json
 COPY packages/config/package.json packages/config/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
@@ -30,11 +30,8 @@ RUN bun install
 
 ENV NODE_ENV=production
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD bun -e "const r = await fetch('http://localhost:9090/health'); process.exit(r.ok ? 0 : 1)" || exit 1
-
 EXPOSE 9090
 
 WORKDIR /app/apps/bot
 
-CMD ["bun", "run", "src/shard.ts"]
+CMD ["bun", "run", "start"]
