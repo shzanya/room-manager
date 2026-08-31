@@ -206,7 +206,35 @@ if (!isShard) {
   }
 
   await importx(
-    `${dirname(import.meta.url)}/{events,commands,components}/**/*.ts`,
+    [
+      `${dirname(import.meta.url)}/commands/setup.command.ts`,
+      `${dirname(import.meta.url)}/commands/stats.command.ts`,
+      `${dirname(import.meta.url)}/events/interactionError.event.ts`,
+      `${dirname(import.meta.url)}/events/ready.event.ts`,
+      `${dirname(import.meta.url)}/events/voiceStateUpdate.event.ts`,
+      `${dirname(import.meta.url)}/components/buttons/accessAdd.button.ts`,
+      `${dirname(import.meta.url)}/components/buttons/accessRemove.button.ts`,
+      `${dirname(import.meta.url)}/components/buttons/hide.button.ts`,
+      `${dirname(import.meta.url)}/components/buttons/info.button.ts`,
+      `${dirname(import.meta.url)}/components/buttons/kick.button.ts`,
+      `${dirname(import.meta.url)}/components/buttons/limit.button.ts`,
+      `${dirname(import.meta.url)}/components/buttons/lock.button.ts`,
+      `${dirname(import.meta.url)}/components/buttons/mute.button.ts`,
+      `${dirname(import.meta.url)}/components/buttons/owner.button.ts`,
+      `${dirname(import.meta.url)}/components/buttons/rename.button.ts`,
+      `${dirname(import.meta.url)}/components/buttons/reset.button.ts`,
+      `${dirname(import.meta.url)}/components/buttons/unlock.button.ts`,
+      `${dirname(import.meta.url)}/components/buttons/unmute.button.ts`,
+      `${dirname(import.meta.url)}/components/selects/accessAdd.select.ts`,
+      `${dirname(import.meta.url)}/components/selects/accessRemove.select.ts`,
+      `${dirname(import.meta.url)}/components/selects/iconSettings.select.ts`,
+      `${dirname(import.meta.url)}/components/selects/kick.select.ts`,
+      `${dirname(import.meta.url)}/components/selects/owner.select.ts`,
+      `${dirname(import.meta.url)}/components/selects/voiceControl.select.ts`,
+      `${dirname(import.meta.url)}/components/modals/limit.modal.ts`,
+      `${dirname(import.meta.url)}/components/modals/rename.modal.ts`,
+      `${dirname(import.meta.url)}/components/settings/design.components.ts`,
+    ],
   );
 
   await client.login(env.DISCORD_TOKEN);
