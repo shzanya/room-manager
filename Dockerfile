@@ -1,9 +1,7 @@
-# ── Stage 1: Install dependencies ──────────────────────────────────
-FROM oven/bun:1.3.14-slim AS deps
+FROM oven/bun:1.3.14-slim
 
 WORKDIR /app
 
-# Copy workspace manifests
 COPY package.json tsconfig.json ./
 COPY apps/bot/package.json apps/bot/package.json
 COPY packages/config/package.json packages/config/package.json
@@ -16,22 +14,6 @@ COPY packages/shared/package.json packages/shared/package.json
 COPY packages/cache/package.json packages/cache/package.json
 COPY packages/queues/package.json packages/queues/package.json
 
-# Install dependencies
-RUN bun install
-
-# ── Stage 2: Production ──────────────────────────────────────────
-FROM oven/bun:1.3.14-slim AS production
-
-WORKDIR /app
-
-# Copy dependencies from deps stage
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/bot/node_modules ./apps/bot/node_modules
-COPY --from=deps /app/packages/*/node_modules ./packages/*/node_modules
-
-# Copy source files
-COPY package.json tsconfig.json ./
-COPY apps/bot/package.json apps/bot/package.json
 COPY apps/bot/src ./apps/bot/src
 COPY apps/bot/assets ./apps/bot/assets
 COPY packages/config ./packages/config
@@ -44,9 +26,10 @@ COPY packages/shared ./packages/shared
 COPY packages/cache ./packages/cache
 COPY packages/queues ./packages/queues
 
+RUN bun install
+
 ENV NODE_ENV=production
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD bun -e "const r = await fetch('http://localhost:9090/health'); process.exit(r.ok ? 0 : 1)" || exit 1
 
