@@ -17,7 +17,7 @@ COPY packages/cache/package.json packages/cache/package.json
 COPY packages/queues/package.json packages/queues/package.json
 
 # Install dependencies
-RUN bun install --frozen-lockfile --production=false || bun install --production=false
+RUN bun install
 
 # ── Stage 2: Production ──────────────────────────────────────────
 FROM oven/bun:1.3.14-slim AS production
