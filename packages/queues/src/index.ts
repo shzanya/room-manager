@@ -1,4 +1,4 @@
-export { createQueueConnection, closeQueueConnection } from "./connection";
+export { closeQueueConnection, createQueueConnection } from "./connection";
 
 export {
   createRoomCleanupQueue,

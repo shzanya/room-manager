@@ -23,16 +23,12 @@ export class LogService {
       const config = await this.guilds.getById(guildId);
       if (!config?.logChannelId) return;
 
-      const logChannel = await guild.channels
-        .fetch(config.logChannelId)
-        .catch(() => null);
+      const logChannel = await guild.channels.fetch(config.logChannelId).catch(() => null);
 
       if (!logChannel?.isTextBased()) return;
 
       const { title, subtitle } = this.format(event);
-      const avatarUrl = event.actorId
-        ? await actorAvatarUrl(guild, event.actorId)
-        : null;
+      const avatarUrl = event.actorId ? await actorAvatarUrl(guild, event.actorId) : null;
 
       const payload = v2Log({
         title,

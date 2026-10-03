@@ -24,10 +24,7 @@ import {
 import { EMOJI_ACTIONS, EmojiLoader } from "../discord/EmojiLoader";
 import { actorAvatarUrl, v2Action, v2Error } from "../discord/V2";
 import { format, tOf } from "../i18n";
-import type {
-  EmojiKey as AppEmojiAction,
-  AppEmojiService,
-} from "./AppEmojiService";
+import type { EmojiKey as AppEmojiAction, AppEmojiService } from "./AppEmojiService";
 import type { BannerService } from "./BannerService";
 import type { PanelTextService } from "./PanelTextService";
 import { svc } from "./registry";
@@ -39,7 +36,6 @@ const PANEL_BUTTONS: Array<{
   label: string;
   row: number;
 }> = [
-  // Row 1
   { action: "limit", customId: "room:limit", label: "Лимит", row: 0 },
   { action: "lock", customId: "room:lock", label: "Закрыть", row: 0 },
   { action: "unlock", customId: "room:unlock", label: "Открыть", row: 0 },
@@ -55,7 +51,7 @@ const PANEL_BUTTONS: Array<{
     label: "Выдать доступ",
     row: 0,
   },
-  // Row 2
+
   { action: "rename", customId: "room:rename", label: "Название", row: 1 },
   { action: "owner", customId: "room:owner", label: "Передать", row: 1 },
   { action: "kick", customId: "room:kick", label: "Выгнать", row: 1 },
@@ -94,10 +90,7 @@ export class SetupService {
     try {
       if (!interaction.guild) {
         await interaction.editReply({
-          ...v2Error(
-            "Настройка",
-            "Эту команду можно использовать только на сервере.",
-          ),
+          ...v2Error("Настройка", "Эту команду можно использовать только на сервере."),
         });
         return;
       }
@@ -109,12 +102,12 @@ export class SetupService {
 
       await interaction.editReply({ ...payload });
     } catch (error) {
-      console.error("[setup] FAILED:", error instanceof Error ? `${error.message}\n${error.stack}` : error);
+      console.error(
+        "[setup] FAILED:",
+        error instanceof Error ? `${error.message}\n${error.stack}` : error,
+      );
       await interaction.editReply({
-        ...v2Error(
-          "Настройка",
-          "Произошла ошибка при настройке. Попробуйте ещё раз.",
-        ),
+        ...v2Error("Настройка", "Произошла ошибка при настройке. Попробуйте ещё раз."),
       });
     }
   }
@@ -168,8 +161,6 @@ export class SetupService {
     config.creatorChannelId = ensured.creatorChannelId;
     config.panelChannelId = ensured.panelChannelId;
 
-    // Critical: a fresh guild has NO row yet — update() would silently
-    // affect zero rows and every later /setup would recreate channels.
     if (existing) {
       await this.guildService.update(guild.id as GuildId, config);
     } else {
@@ -178,12 +169,10 @@ export class SetupService {
 
     await this.publishPanel(guild, config);
 
-    const _status = (created: boolean): string =>
-      created ? "создан" : "найден";
+    const _status = (created: boolean): string => (created ? "создан" : "найден");
 
     const Ls = tOf(guild.id);
-    const stateOf = (created: boolean): string =>
-      created ? Ls.setup.created : Ls.setup.found;
+    const stateOf = (created: boolean): string => (created ? Ls.setup.created : Ls.setup.found);
 
     return v2Action({
       title: Ls.setup.doneTitle,
@@ -196,9 +185,7 @@ export class SetupService {
         }),
         format(Ls.setup.creator, {
           channel: `<#${ensured.creatorChannelId}>`,
-          state: stateOf(
-            ensured.creatorChannelId ? ensured.createdCreator : false,
-          ),
+          state: stateOf(ensured.creatorChannelId ? ensured.createdCreator : false),
         }),
         format(Ls.setup.panelChannel, {
           channel: `<#${ensured.panelChannelId}>`,
@@ -216,10 +203,7 @@ export class SetupService {
     });
   }
 
-  private async fetchExistingChannel(
-    guild: Guild,
-    channelId: string | null,
-  ): Promise<boolean> {
+  private async fetchExistingChannel(guild: Guild, channelId: string | null): Promise<boolean> {
     if (!channelId) return false;
     try {
       const channel = await guild.channels.fetch(channelId);
@@ -240,20 +224,13 @@ export class SetupService {
     createdCreator: boolean;
     createdPanel: boolean;
   }> {
-    // Reuse stored channels only if they still exist on the server.
     let categoryId = (await this.fetchExistingChannel(guild, config.categoryId))
       ? config.categoryId
       : null;
-    let creatorChannelId = (await this.fetchExistingChannel(
-      guild,
-      config.creatorChannelId,
-    ))
+    let creatorChannelId = (await this.fetchExistingChannel(guild, config.creatorChannelId))
       ? config.creatorChannelId
       : null;
-    let panelChannelId = (await this.fetchExistingChannel(
-      guild,
-      config.panelChannelId,
-    ))
+    let panelChannelId = (await this.fetchExistingChannel(guild, config.panelChannelId))
       ? config.panelChannelId
       : null;
 
@@ -267,18 +244,12 @@ export class SetupService {
         type: 4,
       });
 
-      // Privacy model lives on the CATEGORY; rooms sync to it.
-      const isPublic = svc().controlSettings.get(
-        guild.id as GuildId,
-      ).publicCategory;
+      const isPublic = svc().controlSettings.get(guild.id as GuildId).publicCategory;
       await category.permissionOverwrites.edit(
         guild.roles.everyone,
-        isPublic
-          ? { ViewChannel: null, Connect: null }
-          : { ViewChannel: false, Connect: false },
+        isPublic ? { ViewChannel: null, Connect: null } : { ViewChannel: false, Connect: false },
       );
       if (!isPublic && guild.members.me) {
-        // The bot must keep access to its own channels.
         await category.permissionOverwrites.edit(guild.members.me, {
           ViewChannel: true,
           Connect: true,
@@ -319,11 +290,6 @@ export class SetupService {
     };
   }
 
-  /**
-   * Syncs the rooms category with the current role policy.
-   * Denied roles from the `createRoom` policy get ViewChannel+Connect denied.
-   * Called after role policy changes and on initial setup.
-   */
   async refreshPanel(guild: Guild): Promise<void> {
     try {
       const config = await this.guildService.getById(guild.id as GuildId);
@@ -335,11 +301,6 @@ export class SetupService {
     }
   }
 
-  /**
-   * Makes sure the control-panel channel (💬-управление-комнатами)
-   * exists and the panel message is published. Used when the user
-   * switches the control mode to chat/both.
-   */
   async syncControlPanelChannel(guild: Guild): Promise<void> {
     const config = await this.guildService.getById(guild.id as GuildId);
     if (!config) return;
@@ -358,22 +319,14 @@ export class SetupService {
     await this.publishPanel(guild, config);
   }
 
-  /**
-   * Deletes the control-panel channel entirely (Управление → «Только
-   * канал»): rooms are then managed only via the in-voice menu.
-   */
   async removePanelChannel(guild: Guild): Promise<void> {
     const config = await this.guildService.getById(guild.id as GuildId);
     if (!config?.panelChannelId) return;
 
-    const channel = await guild.channels
-      .fetch(config.panelChannelId)
-      .catch(() => null);
+    const channel = await guild.channels.fetch(config.panelChannelId).catch(() => null);
 
     if (channel) {
-      await channel
-        .delete()
-        .catch((e) => this.logger.warn("Failed to delete panel channel", e));
+      await channel.delete().catch((e) => this.logger.warn("Failed to delete panel channel", e));
       this.logger.info(`Deleted panel channel ${config.panelChannelId}`);
     }
 
@@ -388,45 +341,30 @@ export class SetupService {
       throw new Error("Panel channel ID is not set in config");
     }
 
-    const panelChannel = (await guild.channels.fetch(
-      config.panelChannelId,
-    )) as TextChannel | null;
+    const panelChannel = (await guild.channels.fetch(config.panelChannelId)) as TextChannel | null;
 
     if (!panelChannel?.isTextBased()) {
       throw new Error("Panel channel is not a text channel");
     }
 
-    // Refresh custom emoji availability
     const guildEmojis = await guild.emojis.fetch();
-    this.emojiLoader.refreshAvailableEmoji(
-      guildEmojis.map((e) => ({ id: e.id, name: e.name })),
-    );
+    this.emojiLoader.refreshAvailableEmoji(guildEmojis.map((e) => ({ id: e.id, name: e.name })));
 
     if (config.panelMessageId) {
       try {
-        const existingMessage = await panelChannel.messages.fetch(
-          config.panelMessageId,
-        );
+        const existingMessage = await panelChannel.messages.fetch(config.panelMessageId);
         await this.editPanelMessage(existingMessage, config, guild.id);
         return;
       } catch {
-        this.logger.info(
-          `Panel message ${config.panelMessageId} not found, creating a new one`,
-        );
+        this.logger.info(`Panel message ${config.panelMessageId} not found, creating a new one`);
       }
     }
 
-    const newMessage = await this.createPanelMessage(
-      panelChannel,
-      config,
-      guild.id,
-    );
+    const newMessage = await this.createPanelMessage(panelChannel, config, guild.id);
     await this.guildService.update(guild.id as GuildId, {
       panelMessageId: newMessage.id,
     });
 
-    // Lazy emoji pipeline: upload missing colored emojis in background,
-    // then refresh the panel once so buttons pick up the new emoji ids.
     void this.guildEmojis
       .ensureForConfig(config.iconColors)
       .then((uploaded) => (uploaded > 0 ? this.refreshPanel(guild) : undefined))
@@ -482,12 +420,6 @@ export class SetupService {
     this.logger.info(`Edited panel message: ${message.id}`);
   }
 
-  /**
-   * Builds the panel payload according to the guild's template:
-   * - minimal template without text overrides → pure image, no embed;
-   * - otherwise → embed with template/custom title and description
-   *   plus the banner (user banner > template image > default gif).
-   */
   private async buildPanelPayload(
     config: GuildConfig,
     guildId: string,
@@ -500,18 +432,15 @@ export class SetupService {
     );
     const activeCount = rooms.filter((r) => r.state === "active").length;
 
-    // Resolve the template in the guild's language.
     const locale = svc().locale.get(config.guildId);
     const tpl = this.templates.get(config.template ?? "default", locale);
     const minimal = this.templates.isMinimal(config.template ?? "default");
 
-    // Custom panel text (Дизайн → Текст панели) overrides the template.
     const custom = this.panelText.get(config.guildId);
     const title = custom.title || tpl.title || "";
     const description = custom.description || tpl.description || "";
     const hasText = Boolean(title || description);
 
-    // Pure image mode: minimal layout, no text, no footer — just the picture.
     if (minimal && !hasText) {
       return { embed: null, files: await this.collectBannerFiles(config, tpl) };
     }
@@ -526,20 +455,14 @@ export class SetupService {
       footerData.iconURL = avatar;
     }
 
-    const embed = new EmbedBuilder().setColor(
-      minimal ? 0x2b2d31 : config.accentColor,
-    );
+    const embed = new EmbedBuilder().setColor(minimal ? 0x2b2d31 : config.accentColor);
 
-    // discord.js rejects empty strings — set only when non-empty.
     if (title) embed.setTitle(title);
     if (description) embed.setDescription(description);
 
     if (!minimal) embed.setFooter(footerData);
 
-    const { files, imageAttachmentName, imageUrl } = await this.resolveBanner(
-      config,
-      tpl,
-    );
+    const { files, imageAttachmentName, imageUrl } = await this.resolveBanner(config, tpl);
 
     if (imageAttachmentName) {
       embed.setImage(`attachment://${imageAttachmentName}`);
@@ -562,9 +485,7 @@ export class SetupService {
         unmute: Lp.panel.actUnmute,
       };
       const line = (action: string): string => {
-        const color =
-          config.iconColors[action as keyof typeof config.iconColors] ??
-          "default";
+        const color = config.iconColors[action as keyof typeof config.iconColors] ?? "default";
         const app = this.guildEmojis.resolveAny(action, color);
         if (app) {
           return `<:${app.name}:${app.id}> — ${labels[action] ?? action}`;
@@ -582,13 +503,9 @@ export class SetupService {
         line("addAccess"),
       ].join("\n");
 
-      const row2 = [
-        line("rename"),
-        line("owner"),
-        line("kick"),
-        line("mute"),
-        line("unmute"),
-      ].join("\n");
+      const row2 = [line("rename"), line("owner"), line("kick"), line("mute"), line("unmute")].join(
+        "\n",
+      );
 
       embed.addFields(
         { name: "\u200b", value: row1, inline: true },
@@ -599,10 +516,6 @@ export class SetupService {
     return { embed, files };
   }
 
-  /**
-   * Resolves the panel banner with priority:
-   * user banner > template image (file or url) > default gif.
-   */
   private async resolveBanner(
     config: GuildConfig,
     tpl: ReturnType<TemplateService["get"]>,
@@ -614,8 +527,6 @@ export class SetupService {
     if (config.bannerUrl) {
       const bannerState = this.bannerService.getBannerState(config);
       if (bannerState.type === "uploaded") {
-        // Uploaded banners ride along as attachments; resolveBannerAttachments
-        // is merged by the caller, so only reference the name here.
         return {
           files: [],
           imageAttachmentName: config.bannerUrl,
@@ -630,7 +541,9 @@ export class SetupService {
     }
 
     if (tpl.image?.file) {
-      const filePath = join(process.cwd(), "assets", "panel", tpl.image.file);
+      const localFile = join(process.cwd(), "assets", "panel", tpl.image.file);
+      const inBotFile = join(process.cwd(), "apps", "bot", "assets", "panel", tpl.image.file);
+      const filePath = existsSync(localFile) ? localFile : inBotFile;
       if (existsSync(filePath)) {
         const fname = pathBasename(filePath);
         return {
@@ -653,20 +566,11 @@ export class SetupService {
     };
   }
 
-  /**
-   * Files to attach when the panel renders without an embed
-   * (uploaded user banners are merged by the caller).
-   * Remote banners (URL/default gif) are downloaded so the
-   * pure-image panel still shows a picture.
-   */
   private async collectBannerFiles(
     config: GuildConfig,
     tpl: ReturnType<TemplateService["get"]>,
   ): Promise<Array<{ attachment: Buffer; name: string }>> {
-    const { files, imageAttachmentName, imageUrl } = await this.resolveBanner(
-      config,
-      tpl,
-    );
+    const { files, imageAttachmentName, imageUrl } = await this.resolveBanner(config, tpl);
     const out = [...files];
 
     if (out.length === 0 && !imageAttachmentName && imageUrl) {
@@ -690,9 +594,7 @@ export class SetupService {
     return out;
   }
 
-  private createPanelComponents(
-    config: GuildConfig,
-  ): ActionRowBuilder<ButtonBuilder>[] {
+  private createPanelComponents(config: GuildConfig): ActionRowBuilder<ButtonBuilder>[] {
     const rows: ActionRowBuilder<ButtonBuilder>[] = [
       new ActionRowBuilder<ButtonBuilder>(),
       new ActionRowBuilder<ButtonBuilder>(),
@@ -700,18 +602,11 @@ export class SetupService {
 
     for (const btn of PANEL_BUTTONS) {
       const colorName =
-        config.iconColors[btn.action as keyof typeof config.iconColors] ??
-        "default";
+        config.iconColors[btn.action as keyof typeof config.iconColors] ?? "default";
 
-      const button = new ButtonBuilder()
-        .setCustomId(btn.customId)
-        .setStyle(ButtonStyle.Secondary);
+      const button = new ButtonBuilder().setCustomId(btn.customId).setStyle(ButtonStyle.Secondary);
 
-      // 1) Lazily uploaded application emoji (recolorable, hash-deduped)
-      const guildEmoji = this.guildEmojis.get(
-        btn.action as AppEmojiAction,
-        colorName,
-      );
+      const guildEmoji = this.guildEmojis.get(btn.action as AppEmojiAction, colorName);
 
       if (guildEmoji) {
         button.setEmoji({ id: guildEmoji.id });

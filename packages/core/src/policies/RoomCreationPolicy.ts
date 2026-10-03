@@ -1,9 +1,6 @@
 import type { GuildConfig } from "@room-manager/contracts";
 
-export function canCreateRoomFromConfig(
-  config: GuildConfig,
-  activeRoomCount: number,
-): boolean {
+export function canCreateRoomFromConfig(config: GuildConfig, activeRoomCount: number): boolean {
   if (!config.enabled) {
     return false;
   }

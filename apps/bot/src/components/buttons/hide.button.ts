@@ -26,9 +26,7 @@ export class HideButton {
         return;
       }
 
-      const room = await this.roomRepository.findByChannelId(
-        member.voice.channelId as ChannelId,
-      );
+      const room = await this.roomRepository.findByChannelId(member.voice.channelId as ChannelId);
       if (!room) {
         await interaction.editReply({ ...fail(L.common.roomNotFound) });
         return;

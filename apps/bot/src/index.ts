@@ -1,15 +1,11 @@
 import "reflect-metadata";
 
-
 import { dirname, importx } from "@discordx/importer";
 import { loadEnv } from "@room-manager/config";
-import {
-  GuildService,
-  RoomLifecycleService,
-  RoomService,
-} from "@room-manager/core";
+import { GuildService, RoomLifecycleService, RoomService } from "@room-manager/core";
 import {
   AppEmojiCacheRepository,
+  closeDatabase,
   GuildCooldownRepository,
   GuildRepository,
   GuildSettingsRepository,
@@ -17,8 +13,14 @@ import {
   RoomRepository,
   RoomWhitelistRepository,
 } from "@room-manager/database";
+import {
+  createStructuredLogger,
+  discordLatency,
+  startHealthServer,
+} from "@room-manager/observability";
 import { Events, GatewayIntentBits } from "discord.js";
 import { Client } from "discordx";
+import { sql } from "drizzle-orm";
 import { RoomChannelService } from "./RoomChannelService";
 import { RoomCleanupService } from "./RoomCleanupService";
 import { createRoomCreationPolicy } from "./RoomCreationPolicy";
@@ -28,28 +30,29 @@ import { ControlSettingsService } from "./services/ControlSettingsService";
 import { EmojiUploader } from "./services/EmojiUploader";
 import { IconSettingsService } from "./services/IconSettingsService";
 import { LocaleService } from "./services/LocaleService";
+import { LogService } from "./services/LogService";
 import { createMutesRegistry } from "./services/MutesRegistry";
 import { PanelTextService } from "./services/PanelTextService";
 import { initServices } from "./services/registry";
 import { SetupService } from "./services/SetupService";
 import { createWhitelistRegistry } from "./services/WhitelistRegistry";
-import { LogService } from "./services/LogService";
 import { VoiceStateHandler } from "./VoiceStateHandler";
 
-import { closeDatabase } from "@room-manager/database";
-import {
-  createStructuredLogger,
-  startHealthServer,
-  discordLatency,
-} from "@room-manager/observability";
+declare global {
+  var __getShardStats:
+    | (() => {
+        commandCount: number;
+        totalCommandMs: number;
+        lastCommandMs: number;
+        uptime: number;
+      })
+    | undefined;
+}
 
 const env = loadEnv();
-
 const isShard = process.env.SHARDING_MANAGER === "true";
-
 const logger = createStructuredLogger();
 
-// ── PG repositories ────────────────────────────────────────────────
 const guildRepository = new GuildRepository();
 const roomRepository = new RoomRepository();
 const guildSettingsRepository = new GuildSettingsRepository();
@@ -74,9 +77,7 @@ const client = new Client({
 });
 
 const roomChannelService = new RoomChannelService();
-
 const bannerService = new BannerService(logger, guildService);
-
 const panelTextService = new PanelTextService(guildSettingsRepository);
 const controlSettingsService = new ControlSettingsService(guildSettingsRepository);
 const localeService = new LocaleService(guildSettingsRepository);
@@ -148,7 +149,6 @@ initServices({
   logService,
 });
 
-// ── Preload guild settings from PG ────────────────────────────────
 async function preloadGuildSettings(): Promise<void> {
   const rows = await guildSettingsRepository.getAll();
   for (const row of rows) {
@@ -160,7 +160,6 @@ async function preloadGuildSettings(): Promise<void> {
   logger.info(`Preloaded settings for ${rows.length} guilds`);
 }
 
-// ── Shard stats tracking ───────────────────────────────────────────
 let commandCount = 0;
 let totalCommandMs = 0;
 let lastCommandMs = 0;
@@ -174,10 +173,8 @@ export function getShardStats() {
   };
 }
 
-// Expose for broadcastEval access from other files
-(globalThis as any).__getShardStats = getShardStats;
+globalThis.__getShardStats = getShardStats;
 
-// ── Health server (skip in sharded mode) ──────────────────────────
 let healthServer: import("node:http").Server | null = null;
 
 if (!isShard) {
@@ -188,7 +185,7 @@ if (!isShard) {
       database: async () => {
         try {
           const { db } = await import("@room-manager/database");
-          await db.execute({ sql: { sql: "SELECT 1" } } as any);
+          await db.execute(sql`SELECT 1`);
           return true;
         } catch {
           return false;
@@ -198,20 +195,14 @@ if (!isShard) {
   });
 }
 
-// ── Start bot ──────────────────────────────────────────────────────
 (async () => {
   if (isShard) {
-    logger.info(
-      `Starting as shard (PID: ${process.pid}, SHARD_ID: ${process.env.SHARD ?? "0"})`,
-    );
+    logger.info(`Starting as shard (PID: ${process.pid}, SHARD_ID: ${process.env.SHARD ?? "0"})`);
   }
 
-  await importx(
-    `${dirname(import.meta.url)}/{events,commands,components}/**/*.ts`,
-  );
+  await importx(`${dirname(import.meta.url)}/{events,commands,components}/**/*.ts`);
 
   await client.login(env.DISCORD_TOKEN);
-
   await preloadGuildSettings();
 
   client.on(Events.InteractionCreate, (interaction) => {
@@ -240,17 +231,15 @@ if (!isShard) {
   }, 30_000);
 })();
 
-// ── Graceful shutdown ──────────────────────────────────────────────
-let shuttingDown = false;
+let isShuttingDown = false;
 
 const shutdown = async (signal: string): Promise<void> => {
-  if (shuttingDown) {
+  if (isShuttingDown) {
     logger.warn({ signal }, "Shutdown already in progress, ignoring");
     return;
   }
 
-  shuttingDown = true;
-
+  isShuttingDown = true;
   logger.info({ signal }, "Shutting down...");
 
   try {
@@ -261,7 +250,7 @@ const shutdown = async (signal: string): Promise<void> => {
 
     logger.info("Bot shutdown complete");
   } catch (error) {
-    logger.error("Error during shutdown");
+    logger.error({ err: error }, "Error during shutdown");
   } finally {
     process.exit(0);
   }

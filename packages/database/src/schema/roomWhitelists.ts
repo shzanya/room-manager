@@ -9,7 +9,5 @@ export const roomWhitelists = pgTable("room_whitelists", {
 
   userId: varchar("user_id", { length: 20 }).notNull(),
 
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

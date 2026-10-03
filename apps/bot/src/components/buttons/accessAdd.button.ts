@@ -25,9 +25,7 @@ export class AccessAddButton {
         return;
       }
 
-      const room = await this.roomRepository.findByChannelId(
-        member.voice.channelId as ChannelId,
-      );
+      const room = await this.roomRepository.findByChannelId(member.voice.channelId as ChannelId);
 
       if (!room) {
         await interaction.reply({ ...fail(L.common.notPrivateRoom) });
@@ -42,9 +40,7 @@ export class AccessAddButton {
       const guild = interaction.guild;
       if (!guild) return;
 
-      await interaction.reply(
-        await buildWhitelistView(guild, interaction.user.id, room.id, "add"),
-      );
+      await interaction.reply(await buildWhitelistView(guild, interaction.user.id, room.id, "add"));
     } catch (error) {
       this.logger.error("Failed to open whitelist add view", error);
     }

@@ -30,10 +30,7 @@ export class RoomService {
     return this.rooms.findByState(state);
   }
 
-  public async getLatestOwned(
-    guildId: GuildId,
-    ownerId: UserId,
-  ): Promise<Room | null> {
+  public async getLatestOwned(guildId: GuildId, ownerId: UserId): Promise<Room | null> {
     return this.rooms.findLatestOwned(guildId, ownerId);
   }
 

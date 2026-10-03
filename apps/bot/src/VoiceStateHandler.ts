@@ -21,12 +21,8 @@ import type { RoomChannelService } from "./RoomChannelService";
 import type { RoomCleanupService } from "./RoomCleanupService";
 import type { RoomCreationPolicy } from "./RoomCreationPolicy";
 import type { AppEmojiService } from "./services/AppEmojiService";
-import type { MutesRegistry } from "./services/MutesRegistry";
 import { svc } from "./services/registry";
 
-/** Permission bits per Discord API overwrite hierarchy:
- *  UseSoundboard = 1n<<42n, UseExternalSounds = 1n<<45n,
- *  UseEmbeddedActivities = 1n<<39n. */
 const BIT_SOUNDBOARD_USE = PermissionFlagsBits.UseSoundboard;
 const BIT_SOUNDBOARD_EXTERNAL = PermissionFlagsBits.UseExternalSounds;
 const BIT_ACTIVITIES = PermissionFlagsBits.UseEmbeddedActivities;
@@ -48,10 +44,8 @@ function isSoundboardDenied(channel: VoiceChannel): boolean {
 export class VoiceStateHandler {
   private readonly logger: Logger;
 
-  /** Icon colors of the last-seen config, used for select menu emojis. */
   private currentIconColors: Record<string, string> = {};
 
-  /** Debounce timers for panel refresh per guild. */
   private readonly panelRefreshTimers = new Map<GuildId, ReturnType<typeof setTimeout>>();
 
   private get appEmojis(): AppEmojiService {
@@ -69,7 +63,6 @@ export class VoiceStateHandler {
     this.logger = logger;
   }
 
-  /** Debounced panel refresh — coalesces rapid state changes per guild. */
   private refreshPanel(guildId: GuildId): void {
     const existing = this.panelRefreshTimers.get(guildId);
     if (existing) clearTimeout(existing);
@@ -78,16 +71,15 @@ export class VoiceStateHandler {
       this.panelRefreshTimers.delete(guildId);
       const guild = svc().client.guilds.cache.get(guildId);
       if (guild) {
-        svc().setupService.refreshPanel(guild).catch(() => undefined);
+        svc()
+          .setupService.refreshPanel(guild)
+          .catch(() => undefined);
       }
     }, 2000);
     this.panelRefreshTimers.set(guildId, timer);
   }
 
-  public async handle(
-    oldState: VoiceState,
-    newState: VoiceState,
-  ): Promise<void> {
+  public async handle(oldState: VoiceState, newState: VoiceState): Promise<void> {
     if (oldState.channelId === newState.channelId) {
       return;
     }
@@ -109,9 +101,7 @@ export class VoiceStateHandler {
       return;
     }
 
-    const existingRoom = await this.rooms.getByChannelId(
-      channelId as ChannelId,
-    );
+    const existingRoom = await this.rooms.getByChannelId(channelId as ChannelId);
 
     if (existingRoom) {
       await this.handleManagedRoomJoin(existingRoom.id, existingRoom.state);
@@ -144,18 +134,10 @@ export class VoiceStateHandler {
       return;
     }
 
-    // Owner rejoined the hub: send them back to their previous room
-    // (active or cooldown) instead of creating yet another room.
-    // This check MUST run before role policy — owners always rejoin.
-    const owned = await this.rooms.getLatestOwned(
-      guild.id as GuildId,
-      member.id as UserId,
-    );
+    const owned = await this.rooms.getLatestOwned(guild.id as GuildId, member.id as UserId);
 
     if (owned) {
-      const channel = await guild.channels
-        .fetch(owned.channelId)
-        .catch(() => null);
+      const channel = await guild.channels.fetch(owned.channelId).catch(() => null);
 
       if (channel?.isVoiceBased()) {
         if (owned.state === "cooldown") {
@@ -166,9 +148,7 @@ export class VoiceStateHandler {
 
         try {
           await member.voice.setChannel(channel);
-          this.logger.info(
-            `Returned owner ${member.user.tag} to room ${owned.id}`,
-          );
+          this.logger.info(`Returned owner ${member.user.tag} to room ${owned.id}`);
         } catch (error) {
           this.logger.warn(`Failed to return owner to room ${owned.id}`, error);
         }
@@ -177,23 +157,13 @@ export class VoiceStateHandler {
     }
 
     if (!(await this.creationPolicy.canCreate(guild.id as GuildId))) {
-      this.logger.info(
-        `Room creation ignored for guild ${guild.id}: creation cooldown active`,
-      );
+      this.logger.info(`Room creation ignored for guild ${guild.id}: creation cooldown active`);
       return;
     }
 
-    await this.creationPolicy.startCooldown(
-      guild.id as GuildId,
-      config.creationCooldownSeconds,
-    );
+    await this.creationPolicy.startCooldown(guild.id as GuildId, config.creationCooldownSeconds);
 
-    await this.createRoom(
-      guild.id as GuildId,
-      member,
-      config.categoryId,
-      config.defaultUserLimit,
-    );
+    await this.createRoom(guild.id as GuildId, member, config.categoryId, config.defaultUserLimit);
   }
 
   private async handleManagedRoomJoin(
@@ -216,9 +186,7 @@ export class VoiceStateHandler {
       }
 
       case "deleting": {
-        this.logger.warn(
-          `Ignoring join for room ${roomId}: deletion already started`,
-        );
+        this.logger.warn(`Ignoring join for room ${roomId}: deletion already started`);
         return;
       }
 
@@ -292,21 +260,14 @@ export class VoiceStateHandler {
     categoryId: string | null,
     userLimit: number,
   ): Promise<void> {
-    // Room name uses the server nickname, not the raw username.
     const name = format(tOf(guildId).roomName.template, {
       name: member.displayName,
     });
 
     const control = svc().controlSettings.get(guildId);
 
-    const voice = await this.channels.create(
-      member.guild,
-      name,
-      categoryId,
-      userLimit,
-    );
+    const voice = await this.channels.create(member.guild, name, categoryId, userLimit);
 
-    // Owner gets full control of their room (category denies @everyone).
     await voice.permissionOverwrites
       .edit(member.id, {
         ViewChannel: true,
@@ -360,26 +321,12 @@ export class VoiceStateHandler {
       throw error;
     }
 
-    // In-voice select menu is posted unless the mode is chat-only.
-    // The owner is pinged ONCE — only on this fresh panel — so they
-    // notice that room management exists.
     if (control.mode !== "chat") {
       await this.sendVoiceControlPanel(voice, member, true);
     }
   }
 
-  /**
-   * Applies a new control mode. The button panel (💬-управление-комнатами)
-   * and the in-voice select menu exist exactly where the mode allows:
-   * - voice → in-voice menu only; the panel channel is DELETED;
-   * - chat  → panel channel with buttons only; in-voice menus removed;
-   * - both  → both surfaces.
-   */
-  public async applyControlMode(
-    guild: Guild,
-    mode: "both" | "voice" | "chat",
-  ): Promise<void> {
-    // 1) In-voice menus for live rooms.
+  public async applyControlMode(guild: Guild, mode: "both" | "voice" | "chat"): Promise<void> {
     const rooms = await svc().roomService.getByGuildId(
       guild.id as import("@room-manager/shared").GuildId,
     );
@@ -387,7 +334,7 @@ export class VoiceStateHandler {
 
     for (const room of active) {
       const ch = await guild.channels.fetch(room.channelId).catch(() => null);
-      if (!ch?.isVoiceBased() || ch.type === 13) continue; // skip stages
+      if (!ch?.isVoiceBased() || ch.type === 13) continue;
       const voice = ch as VoiceChannel;
 
       if (mode === "chat") {
@@ -395,7 +342,6 @@ export class VoiceStateHandler {
         continue;
       }
 
-      // Repost cleanly — never leave a stale/duplicated menu behind.
       await this.deleteVoiceControlMessages(voice);
 
       const owner = await guild.members.fetch(room.ownerId).catch(() => null);
@@ -404,7 +350,6 @@ export class VoiceStateHandler {
       await this.sendVoiceControlPanel(voice, owner);
     }
 
-    // 2) Panel channel (💬-управление-комнатами).
     if (mode === "voice") {
       await svc().setupService.removePanelChannel(guild);
     } else {
@@ -412,13 +357,12 @@ export class VoiceStateHandler {
     }
   }
 
-  /** Deletes the bot's old control-panel messages from a voice channel. */
   private async deleteVoiceControlMessages(voice: VoiceChannel): Promise<void> {
     try {
       const msgs = await voice.messages.fetch({ limit: 50 });
       for (const [, m] of msgs) {
         if (m.author.id !== voice.client.user?.id) continue;
-        // Panels are Components-V2 containers — search the raw payload.
+
         if (JSON.stringify(m.components).includes("room:vc:manage")) {
           await m.delete().catch(() => undefined);
         }
@@ -428,10 +372,6 @@ export class VoiceStateHandler {
     }
   }
 
-  /**
-   * Posts a Components V2 control message into the room's voice channel:
-   * header with avatar thumbnail + one select menu for all room actions.
-   */
   private async sendVoiceControlPanel(
     voiceChannel: VoiceChannel,
     member: GuildMember,
@@ -439,7 +379,6 @@ export class VoiceStateHandler {
   ): Promise<void> {
     const channel = voiceChannel;
     try {
-      // Cache icon colors so select options use the guild's emoji variants.
       const cfg = await this.guilds.getById(
         member.guild.id as import("@room-manager/shared").GuildId,
       );
@@ -459,9 +398,7 @@ export class VoiceStateHandler {
       const section = new SectionBuilder()
         .addTextDisplayComponents(text)
         .setThumbnailAccessory(
-          new ThumbnailBuilder().setURL(
-            member.displayAvatarURL({ extension: "png", size: 128 }),
-          ),
+          new ThumbnailBuilder().setURL(member.displayAvatarURL({ extension: "png", size: 128 })),
         );
 
       const container = new ContainerBuilder().addSectionComponents(section);
@@ -491,19 +428,14 @@ export class VoiceStateHandler {
           option.setEmoji(o.emoji);
         }
 
-        // Soundpad/Activities show the ACTION that selecting performs.
         if (o.value === "soundpad") {
           option.setLabel(
-            isSoundboardDenied(voiceChannel)
-              ? L.soundpad.allowLabel
-              : L.soundpad.denyLabel,
+            isSoundboardDenied(voiceChannel) ? L.soundpad.allowLabel : L.soundpad.denyLabel,
           );
         }
         if (o.value === "activities") {
           const deniedA = hasEveryoneDeny(voiceChannel, BIT_ACTIVITIES);
-          option.setLabel(
-            deniedA ? L.activities.allowLabel : L.activities.denyLabel,
-          );
+          option.setLabel(deniedA ? L.activities.allowLabel : L.activities.denyLabel);
         }
         return option;
       });

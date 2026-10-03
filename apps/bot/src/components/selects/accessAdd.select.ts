@@ -34,9 +34,7 @@ export class AccessAddSelect {
       const channel = await guild.channels.fetch(member.voice.channelId);
       if (!channel?.isVoiceBased()) return;
 
-      const targetMember = await guild.members
-        .fetch({ user: targetUserId })
-        .catch(() => null);
+      const targetMember = await guild.members.fetch({ user: targetUserId }).catch(() => null);
       if (!targetMember) {
         await interaction.followUp({
           ...v2Error(L.access.title, L.access.targetNotFound),
@@ -44,7 +42,6 @@ export class AccessAddSelect {
         return;
       }
 
-      // Anti-self / anti-bot guard
       if (targetUserId === interaction.user.id) {
         await interaction.followUp({
           ...v2Error(L.access.title, L.common.invalidTarget),
@@ -63,7 +60,6 @@ export class AccessAddSelect {
         Connect: true,
       });
 
-      // Thumbnail = the person who received access.
       const targetAvatar = targetMember.displayAvatarURL({
         extension: "png",
         size: 128,

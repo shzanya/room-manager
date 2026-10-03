@@ -34,9 +34,7 @@ export class AccessRemoveSelect {
       const channel = await guild.channels.fetch(member.voice.channelId);
       if (!channel?.isVoiceBased()) return;
 
-      const targetMember = await guild.members
-        .fetch({ user: targetUserId })
-        .catch(() => null);
+      const targetMember = await guild.members.fetch({ user: targetUserId }).catch(() => null);
       if (!targetMember) {
         await interaction.followUp({
           ...v2Error(L.access.title, L.access.targetNotFound),
@@ -49,7 +47,6 @@ export class AccessRemoveSelect {
         Connect: null,
       });
 
-      // Thumbnail = the person whose access was revoked.
       const targetAvatar = targetMember.displayAvatarURL({
         extension: "png",
         size: 128,

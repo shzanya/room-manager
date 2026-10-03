@@ -47,9 +47,7 @@ const dependencies: Record<string, Record<string, string>> = {
   },
 };
 
-for (const [relativePath, packageDependencies] of Object.entries(
-  dependencies,
-)) {
+for (const [relativePath, packageDependencies] of Object.entries(dependencies)) {
   const packagePath = join(root, relativePath, "package.json");
 
   const packageJson = JSON.parse(await readFile(packagePath, "utf8"));

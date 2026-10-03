@@ -25,9 +25,7 @@ export class AccessRemoveButton {
         return;
       }
 
-      const room = await this.roomRepository.findByChannelId(
-        member.voice.channelId as ChannelId,
-      );
+      const room = await this.roomRepository.findByChannelId(member.voice.channelId as ChannelId);
 
       if (!room) {
         await interaction.reply({ ...fail(L.common.notPrivateRoom) });

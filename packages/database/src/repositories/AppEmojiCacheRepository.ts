@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { db } from "../client";
 import { appEmojiCache } from "../schema";
 
@@ -28,8 +29,6 @@ export class AppEmojiCacheRepository {
   }
 
   async delete(name: string): Promise<void> {
-    await db.delete(appEmojiCache).where(
-      { name } as any,
-    );
+    await db.delete(appEmojiCache).where(eq(appEmojiCache.name, name));
   }
 }

@@ -1,4 +1,4 @@
-import type { GuildId, UserId } from "@room-manager/shared";
+import type { UserId } from "@room-manager/shared";
 import { and, eq } from "drizzle-orm";
 
 import { db } from "../client";
@@ -6,10 +6,7 @@ import { roomMutes } from "../schema";
 
 export class RoomMuteRepository {
   public async add(roomId: string, userId: UserId): Promise<void> {
-    await db
-      .insert(roomMutes)
-      .values({ roomId, userId })
-      .onConflictDoNothing();
+    await db.insert(roomMutes).values({ roomId, userId }).onConflictDoNothing();
   }
 
   public async remove(roomId: string, userId: UserId): Promise<boolean> {

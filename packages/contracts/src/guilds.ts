@@ -28,7 +28,6 @@ export interface IconColors {
   mute: string;
   unmute: string;
 
-  /** Room-scoped toggles (chat control). */
   soundpad: string;
   activities: string;
 }
@@ -137,19 +136,14 @@ export interface GuildConfig {
   deleteDelaySeconds: number;
   creationCooldownSeconds: number;
 
-  /** Accent color for embeds, used in the panel and other messages. */
   accentColor: number;
 
-  /** Optional banner image URL for the panel embed. */
   bannerUrl: string | null;
 
-  /** Icon pack name: classic, minimal, niako, or custom. */
   iconPack: IconPackName;
 
-  /** Per-action icon color configuration. Keys are action names, values are color names or hex strings. */
   iconColors: IconColors;
 
-  /** Panel template name (see apps/bot/assets/templates). */
   template: string;
 
   createdAt: Date;

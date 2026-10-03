@@ -2,11 +2,7 @@ import type { RoomService } from "@room-manager/core";
 import type { RoomRepository } from "@room-manager/database";
 import type { Logger } from "@room-manager/logger";
 import type { ChannelId } from "@room-manager/shared";
-import {
-  GuildMember,
-  MessageFlags,
-  type ModalSubmitInteraction,
-} from "discord.js";
+import { GuildMember, MessageFlags, type ModalSubmitInteraction } from "discord.js";
 import { Discord, ModalComponent } from "discordx";
 import { actorAvatarUrl, v2Action, v2Error } from "../../discord/V2";
 import { format, tOf } from "../../i18n";
@@ -38,8 +34,7 @@ export class LimitModal {
         return;
       }
 
-      const limitInput =
-        interaction.fields.getTextInputValue("room:limit:input");
+      const limitInput = interaction.fields.getTextInputValue("room:limit:input");
       const limit = Number.parseInt(limitInput, 10);
 
       if (Number.isNaN(limit) || limit < 0 || limit > 99) {
@@ -47,9 +42,7 @@ export class LimitModal {
         return;
       }
 
-      const room = await this.roomRepository.findByChannelId(
-        member.voice.channelId as ChannelId,
-      );
+      const room = await this.roomRepository.findByChannelId(member.voice.channelId as ChannelId);
       if (!room) {
         await interaction.editReply({ ...fail(L.common.roomNotFound) });
         return;
@@ -65,9 +58,7 @@ export class LimitModal {
       await svc().logService.send(guild, guild.id as import("@room-manager/shared").GuildId, {
         type: "limit",
         actorId: interaction.user.id,
-        details: [
-          limit === 0 ? "Без лимита" : `Лимит: ${limit}`,
-        ],
+        details: [limit === 0 ? "Без лимита" : `Лимит: ${limit}`],
       });
 
       const channel = await guild.channels.fetch(room.channelId);

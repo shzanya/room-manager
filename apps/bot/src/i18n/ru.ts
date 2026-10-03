@@ -1,7 +1,3 @@
-/**
- * Russian — source of truth for the dictionary shape.
- * Every other locale must structurally match this object.
- */
 export const ru = {
   meta: { name: "Русский" },
 
@@ -136,8 +132,7 @@ export const ru = {
     title: "Передача владельца",
     notInVoice: "Вы должны находиться в голосовой комнате.",
     ownerOnly: "Только владелец комнаты может передать собственность.",
-    noCandidates:
-      "В комнате нет пользователей, которым можно передать собственность.",
+    noCandidates: "В комнате нет пользователей, которым можно передать собственность.",
     promptText: "выберите участника, которому передаёте владение комнатой",
     placeholder: "Выберите нового владельца",
     doneText: "вы передали владение комнатой",
@@ -188,8 +183,7 @@ export const ru = {
 
   setup: {
     doneTitle: "Настройка завершена",
-    doneText:
-      "приватные комнаты готовы — зайдите в канал создания, комната появится автоматически",
+    doneText: "приватные комнаты готовы — зайдите в канал создания, комната появится автоматически",
     category: "Категория: {channel} ({state})",
     creator: "Канал создания: {channel} ({state})",
     panelChannel: "Панель управления: {channel} ({state})",
@@ -240,8 +234,7 @@ export const ru = {
 
     iconsTitle: "🎨 Иконки",
     iconsPack: "**Пак:** {pack}",
-    iconsNote:
-      "Новый пак — просто папка в `assets/emojis/packs/` (docs/emojis.md).",
+    iconsNote: "Новый пак — просто папка в `assets/emojis/packs/` (docs/emojis.md).",
     packPlaceholder: "Пак иконок",
     presetPlaceholder: "Пресет цветов",
     colorAllPlaceholder: "Цвет всех иконок",
@@ -300,8 +293,7 @@ export const ru = {
     modeVoice: "Только войс",
     modeVoiceDesc: "Меню только в голосовой комнате; канал панели удаляется",
     modeChat: "Только панель",
-    modeChatDesc:
-      "Кнопки только в 💬-управление-комнатами; меню из войса убирается",
+    modeChatDesc: "Кнопки только в 💬-управление-комнатами; меню из войса убирается",
     btnInstantOn: "Мгновенное удаление: вкл",
     btnInstantOff: "Мгновенное удаление: выкл",
     btnPublicOn: "Категория видна всем: вкл",
@@ -329,8 +321,7 @@ export const ru = {
     rolesAllowRoles: "Разрешённые роли (ID)",
     rolesDenyRoles: "Запрещённые роли (ID)",
     rolesMuteRole: "Роль мута",
-    rolesMuteRoleDesc:
-      "Роль, выдаваемая при муте в комнате (Speak ❌, SendMessages ❌)",
+    rolesMuteRoleDesc: "Роль, выдаваемая при муте в комнате (Speak ❌, SendMessages ❌)",
     rolesAdminRoles: "Админ-роли (обход всех проверок)",
     rolesGroupAdministrators: "Администраторы",
     rolesGroupModerators: "Модераторы",
@@ -384,10 +375,8 @@ export const ru = {
     iconTitle: "Своя иконка",
     bannerFileTitle: "Баннер файлом",
     bannerFileText: "отправьте изображение следующим сообщением в этот канал",
-    iconUnknownAction:
-      "Неизвестное действие `{action}`. Примеры: limit, lock, kick.",
-    iconSendPrompt:
-      "отправьте PNG-иконку для действия `{action}` следующим сообщением",
+    iconUnknownAction: "Неизвестное действие `{action}`. Примеры: limit, lock, kick.",
+    iconSendPrompt: "отправьте PNG-иконку для действия `{action}` следующим сообщением",
     iconSpecs: "До 512 KB и 512x512 · ожидание: 2 минуты",
     uploadFormats: "Форматы: PNG, JPG или WebP · до 8 МБ",
     uploadWait: "Ожидание: 2 минуты",
@@ -396,8 +385,7 @@ export const ru = {
     uploadedNote: "Панель управления обновлена",
     iconDone: "иконка загружена и обработана",
     iconAction: "Действие: {action}",
-    iconVariants:
-      "Сгенерировано вариантов цвета: {count} (original + 11 цветов)",
+    iconVariants: "Сгенерировано вариантов цвета: {count} (original + 11 цветов)",
     iconPickCustom: "Выберите пак **{pack}** в разделе Иконки",
     downloadFailed: "Не удалось скачать вложение.",
     badImage: "Некорректное изображение.",
@@ -418,7 +406,8 @@ export const ru = {
     state: "Состояние",
     working: "Работает",
     noData: "Нет данных",
-    shardRow: "Осколок {id} | {status} | {cluster} | {guilds} серверов | {users} пользователей | {latency} мс",
+    shardRow:
+      "Осколок {id} | {status} | {cluster} | {guilds} серверов | {users} пользователей | {latency} мс",
   },
 };
 

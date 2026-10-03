@@ -8,9 +8,6 @@ export interface PanelText {
 
 const EMPTY: PanelText = { title: null, description: null };
 
-/**
- * Synchronous reads (in-memory cache) + async writes (PG).
- */
 export class PanelTextService {
   private cache = new Map<string, PanelText>();
 

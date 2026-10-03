@@ -14,12 +14,7 @@ import {
   TextInputStyle,
 } from "discord.js";
 import { ButtonComponent, Discord, ModalComponent } from "discordx";
-import {
-  actorAvatarUrl,
-  v2Action,
-  v2ActionFor,
-  v2Error,
-} from "../../discord/V2";
+import { actorAvatarUrl, v2Action, v2ActionFor, v2Error } from "../../discord/V2";
 import { format, tOf } from "../../i18n";
 import type { BannerService } from "../../services/BannerService";
 import type { IconSettingsService } from "../../services/IconSettingsService";
@@ -30,11 +25,6 @@ function hasManageGuild(interaction: ButtonInteraction): boolean {
   return member instanceof GuildMember && member.permissions.has("ManageGuild");
 }
 
-/**
- * Design section controls: banner source (URL / file / reset),
- * all answers rendered with the unified builder and the design
- * view re-rendered in place so changes are instantly visible.
- */
 @Discord()
 export class DesignComponents {
   private readonly logger: Logger = svc().logger;
@@ -82,7 +72,7 @@ export class DesignComponents {
   async onBannerUrlModal(interaction: ModalSubmitInteraction): Promise<void> {
     try {
       const L = tOf(interaction.guild?.id);
-      // When opened from the design view we edit that message in place.
+
       if (interaction.isFromMessage()) {
         await interaction.deferUpdate();
       } else {
@@ -90,10 +80,7 @@ export class DesignComponents {
       }
 
       const member = interaction.member;
-      if (
-        !(member instanceof GuildMember) ||
-        !member.permissions.has("ManageGuild")
-      ) {
+      if (!(member instanceof GuildMember) || !member.permissions.has("ManageGuild")) {
         await interaction.editReply({
           ...v2Error(L.settings.designTitle, L.settings.textNoPerms),
         });
@@ -108,17 +95,12 @@ export class DesignComponents {
         return;
       }
 
-      const url = interaction.fields.getTextInputValue(
-        "setup:banner:url:input",
-      );
+      const url = interaction.fields.getTextInputValue("setup:banner:url:input");
 
       const validation = this.bannerService.validateUrl(url);
       if (!validation.valid) {
         await interaction.editReply({
-          ...v2Error(
-            L.settings.urlModalTitle,
-            validation.error ?? "Invalid URL.",
-          ),
+          ...v2Error(L.settings.urlModalTitle, validation.error ?? "Invalid URL."),
         });
         return;
       }
@@ -126,12 +108,7 @@ export class DesignComponents {
       await this.bannerService.setCustomUrl(guild.id as GuildId, url);
       await svc().setupService.refreshPanel(guild);
 
-      // Re-render the design view so the new banner is visible immediately.
-      await this.iconSettings.renderDesignInto(
-        interaction,
-        guild,
-        L.settings.flashUrlSet,
-      );
+      await this.iconSettings.renderDesignInto(interaction, guild, L.settings.flashUrlSet);
     } catch (error) {
       this.logger.error("Failed to set banner URL", error);
       const L = tOf(interaction.guild?.id);
@@ -165,11 +142,7 @@ export class DesignComponents {
       await this.bannerService.resetToDefault(guild.id as GuildId);
       await svc().setupService.refreshPanel(guild);
 
-      await this.iconSettings.renderDesignInto(
-        interaction,
-        guild,
-        L.settings.flashReset,
-      );
+      await this.iconSettings.renderDesignInto(interaction, guild, L.settings.flashReset);
     } catch (error) {
       this.logger.error("Failed to reset banner", error);
       await interaction.editReply({
@@ -239,10 +212,7 @@ export class DesignComponents {
       }
 
       const member = interaction.member;
-      if (
-        !(member instanceof GuildMember) ||
-        !member.permissions.has("ManageGuild")
-      ) {
+      if (!(member instanceof GuildMember) || !member.permissions.has("ManageGuild")) {
         await interaction.editReply({
           ...v2Error(
             tOf(interaction.guild?.id).settings.btnPanelText,
@@ -260,9 +230,7 @@ export class DesignComponents {
         return;
       }
 
-      const title = interaction.fields
-        .getTextInputValue("setup:design:text:title")
-        .trim();
+      const title = interaction.fields.getTextInputValue("setup:design:text:title").trim();
       const description = interaction.fields
         .getTextInputValue("setup:design:text:description")
         .trim();
@@ -365,10 +333,7 @@ export class DesignComponents {
           actorId: interaction.user.id,
           text: L.upload.bannerFileText,
           details: [L.upload.uploadFormats, L.upload.uploadWait],
-          avatarUrl: await actorAvatarUrl(
-            interaction.guild ?? null,
-            interaction.user.id,
-          ),
+          avatarUrl: await actorAvatarUrl(interaction.guild ?? null, interaction.user.id),
         }),
       });
 
@@ -381,8 +346,7 @@ export class DesignComponents {
       const guild = interaction.guild;
       if (!guild) return;
 
-      const validation =
-        await svc().bannerService.validateAttachment(attachment);
+      const validation = await svc().bannerService.validateAttachment(attachment);
       if (!validation.valid) {
         await interaction.followUp({
           ...fail(validation.error ?? L.upload.badImage),
@@ -390,27 +354,18 @@ export class DesignComponents {
         return;
       }
 
-      await svc().bannerService.saveUploadedBanner(
-        guild.id as GuildId,
-        attachment,
-      );
+      await svc().bannerService.saveUploadedBanner(guild.id as GuildId, attachment);
       await svc().setupService.refreshPanel(guild);
 
-      // Confirmation WITH the received image so it can be verified.
       const confirm = await v2ActionFor(
         guild,
         interaction.user.id,
         L.upload.bannerFileTitle,
         L.upload.uploadedText,
-        [
-          format(L.upload.uploadedFile, { name: attachment.name }),
-          L.upload.uploadedNote,
-        ],
+        [format(L.upload.uploadedFile, { name: attachment.name }), L.upload.uploadedNote],
       );
       confirm.components[0].addMediaGalleryComponents(
-        new MediaGalleryBuilder().addItems(
-          new MediaGalleryItemBuilder().setURL(attachment.url),
-        ),
+        new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(attachment.url)),
       );
       await interaction.followUp(confirm);
     } catch (error) {
@@ -419,14 +374,9 @@ export class DesignComponents {
   }
 }
 
-/**
- * Waits up to 2 minutes for the next image message from the same user
- * in the current channel. Returns the first attachment, or null.
- */
 async function collectImageAttachment(
   interaction: ButtonInteraction | ModalSubmitInteraction,
 ): Promise<Attachment | null> {
-  // Settings run in a guild text channel; narrow to what has awaitMessages.
   const channel = interaction.channel;
   if (!channel || channel.partial || !("awaitMessages" in channel)) {
     return null;
@@ -447,7 +397,6 @@ async function collectImageAttachment(
 
   const attachment = msg.attachments.first() ?? null;
 
-  // Keep the channel tidy — best effort.
   await msg.delete().catch(() => undefined);
 
   return attachment;

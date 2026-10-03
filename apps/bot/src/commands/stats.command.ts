@@ -1,19 +1,19 @@
+import { readFileSync } from "node:fs";
+import { cpus, freemem, totalmem } from "node:os";
+import { resolve } from "node:path";
+import { memoryUsage } from "node:process";
 import {
   ContainerBuilder,
-  TextDisplayBuilder,
+  PermissionFlagsBits,
   SeparatorBuilder,
   SeparatorSpacingSize,
+  TextDisplayBuilder,
 } from "discord.js";
 import { Discord, Slash } from "discordx";
-import { PermissionFlagsBits } from "discord.js";
-import { svc } from "../services/registry";
+import { detectClusterName } from "../cluster";
 import { tOf } from "../i18n";
 import { getShardStats } from "../index";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { detectClusterName } from "../cluster";
-import { memoryUsage } from "node:process";
-import { cpus, totalmem, freemem } from "node:os";
+import { svc } from "../services/registry";
 
 const CLUSTER_NAME = detectClusterName();
 const V2_FLAG = 32768;
@@ -65,16 +65,12 @@ export class StatsCommand {
     description: "Bot statistics: cluster, shards, performance, system",
     defaultMemberPermissions: [PermissionFlagsBits.Administrator],
   })
-  async stats(
-    interaction: import("discord.js").ChatInputCommandInteraction,
-  ): Promise<void> {
+  async stats(interaction: import("discord.js").ChatInputCommandInteraction): Promise<void> {
     const L = tOf(interaction.guild?.id);
     const { client } = svc();
 
     const isSharded = client.shard !== null;
-    const currentShardId = isSharded && client.shard
-      ? (client.shard.ids[0] ?? 0) + 1
-      : 1;
+    const currentShardId = isSharded && client.shard ? (client.shard.ids[0] ?? 0) + 1 : 1;
 
     let totalGuilds = 0;
     let totalUsers = 0;
@@ -89,7 +85,7 @@ export class StatsCommand {
 
     if (isSharded && client.shard) {
       const shardResults = await client.shard.broadcastEval((c) => {
-        const stats = (globalThis as any).__getShardStats?.() ?? {
+        const stats = globalThis.__getShardStats?.() ?? {
           commandCount: 0,
           totalCommandMs: 0,
         };
@@ -116,10 +112,7 @@ export class StatsCommand {
     } else {
       const stats = getShardStats();
       const guilds = client.guilds.cache.size;
-      const users = client.guilds.cache.reduce(
-        (sum, g) => sum + g.memberCount,
-        0,
-      );
+      const users = client.guilds.cache.reduce((sum, g) => sum + g.memberCount, 0);
 
       totalGuilds = guilds;
       totalUsers = users;
@@ -130,10 +123,7 @@ export class StatsCommand {
           users,
           latency: client.ws.ping,
           uptime: stats.uptime,
-          avgCmdMs:
-            stats.commandCount > 0
-              ? stats.totalCommandMs / stats.commandCount
-              : 0,
+          avgCmdMs: stats.commandCount > 0 ? stats.totalCommandMs / stats.commandCount : 0,
         },
       ];
     }
@@ -142,9 +132,7 @@ export class StatsCommand {
     const shardIds = shardData.map((d) => d.id);
     const avgLatency = shardData.reduce((s, d) => s + d.latency, 0) / totalShards;
     const avgCmdMs = shardData.reduce((s, d) => s + d.avgCmdMs, 0) / totalShards;
-    const uptimeStr = formatUptime(
-      shardData.reduce((s, d) => s + d.uptime, 0) / totalShards,
-    );
+    const uptimeStr = formatUptime(shardData.reduce((s, d) => s + d.uptime, 0) / totalShards);
 
     const sys = getSystemInfo();
 
@@ -157,17 +145,13 @@ export class StatsCommand {
       .join("\n");
 
     const container = new ContainerBuilder()
-      .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(`# Статистика бота`),
-      )
-      .addSeparatorComponents(
-        new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small),
-      )
+      .addTextDisplayComponents(new TextDisplayBuilder().setContent(`# Статистика бота`))
+      .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))
       .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
           [
             `> **Кластер:** ${CLUSTER_NAME} (${1}/${1})`,
-            `> **Осколки:** [ ${shardIds.map((id) => id === currentShardId ? `**${id}**` : id).join(", ")} ]`,
+            `> **Осколки:** [ ${shardIds.map((id) => (id === currentShardId ? `**${id}**` : id)).join(", ")} ]`,
           ].join("\n"),
         ),
       )
@@ -180,9 +164,7 @@ export class StatsCommand {
           ].join("\n"),
         ),
       )
-      .addSeparatorComponents(
-        new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small),
-      )
+      .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))
       .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
           [
@@ -191,9 +173,7 @@ export class StatsCommand {
           ].join("\n"),
         ),
       )
-      .addSeparatorComponents(
-        new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small),
-      )
+      .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))
       .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
           [
@@ -204,15 +184,10 @@ export class StatsCommand {
           ].join("\n"),
         ),
       )
-      .addSeparatorComponents(
-        new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small),
-      )
+      .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))
       .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
-          [
-            `**Осколки**`,
-            shardRows || L.stats.noData,
-          ].join("\n"),
+          [`**Осколки**`, shardRows || L.stats.noData].join("\n"),
         ),
       );
 

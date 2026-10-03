@@ -1,9 +1,6 @@
 import type { RoomMuteRepository } from "@room-manager/database";
 import type { RoomId, UserId } from "@room-manager/shared";
 
-/**
- * PG-backed per-room mute bookkeeping.
- */
 export function createMutesRegistry(repo: RoomMuteRepository) {
   return {
     async add(roomId: RoomId, userId: UserId): Promise<void> {

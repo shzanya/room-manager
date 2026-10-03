@@ -3,7 +3,6 @@ import {
   integer,
   pgEnum,
   pgTable,
-  text,
   timestamp,
   uuid,
   varchar,
@@ -11,11 +10,7 @@ import {
 
 import { guilds } from "./guilds";
 
-export const roomStateEnum = pgEnum("room_state", [
-  "active",
-  "cooldown",
-  "deleting",
-]);
+export const roomStateEnum = pgEnum("room_state", ["active", "cooldown", "deleting"]);
 
 export const rooms = pgTable("rooms", {
   id: uuid("id").primaryKey(),
@@ -35,13 +30,7 @@ export const rooms = pgTable("rooms", {
   locked: boolean("locked").notNull().default(false),
   hidden: boolean("hidden").notNull().default(false),
 
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  lastActivityAt: timestamp("last_activity_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  lastActivityAt: timestamp("last_activity_at", { withTimezone: true }).notNull().defaultNow(),
 });

@@ -18,9 +18,7 @@ export async function isRoomOwner(
     return false;
   }
 
-  const room = await roomRepository.findByChannelId(
-    member.voice.channelId as ChannelId,
-  );
+  const room = await roomRepository.findByChannelId(member.voice.channelId as ChannelId);
 
   if (!room) {
     return false;

@@ -2,11 +2,7 @@ import type { RoomService } from "@room-manager/core";
 import type { RoomRepository } from "@room-manager/database";
 import type { Logger } from "@room-manager/logger";
 import type { ChannelId } from "@room-manager/shared";
-import {
-  GuildMember,
-  MessageFlags,
-  type ModalSubmitInteraction,
-} from "discord.js";
+import { GuildMember, MessageFlags, type ModalSubmitInteraction } from "discord.js";
 import { Discord, ModalComponent } from "discordx";
 import { actorAvatarUrl, v2Action, v2Error } from "../../discord/V2";
 import { format, tOf } from "../../i18n";
@@ -45,9 +41,7 @@ export class RenameModal {
         return;
       }
 
-      const room = await this.roomRepository.findByChannelId(
-        member.voice.channelId as ChannelId,
-      );
+      const room = await this.roomRepository.findByChannelId(member.voice.channelId as ChannelId);
       if (!room) {
         await interaction.editReply({ ...fail(L.common.roomNotFound) });
         return;

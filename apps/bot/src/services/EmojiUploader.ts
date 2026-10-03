@@ -19,7 +19,7 @@ const ALL_COLORS = [
   "pink",
 ] as const;
 
-const MAX_ICON_SIZE = 512 * 1024; // 512KB
+const MAX_ICON_SIZE = 512 * 1024;
 const MAX_ICON_DIMENSION = 512;
 
 const COLOR_TARGETS: Record<string, [number, number, number]> = {
@@ -47,16 +47,7 @@ export class EmojiUploader {
     this.packsPath = join(base, "emojis", "packs");
   }
 
-  /**
-   * Tint an arbitrary PNG buffer toward the given RGB color,
-   * preserving alpha/shape (used by the lazy guild-emoji pipeline).
-   */
-  async tintBuffer(
-    source: Buffer,
-    r: number,
-    g: number,
-    b: number,
-  ): Promise<Buffer> {
+  async tintBuffer(source: Buffer, r: number, g: number, b: number): Promise<Buffer> {
     const image = await loadImage(source);
     return this.generateColorVariant(image, r, g, b);
   }
@@ -89,16 +80,11 @@ export class EmojiUploader {
     return { valid: true };
   }
 
-  async processUploadedIcon(
-    action: string,
-    imageBuffer: Buffer,
-  ): Promise<string[]> {
+  async processUploadedIcon(action: string, imageBuffer: Buffer): Promise<string[]> {
     const image = await loadImage(imageBuffer);
 
     if (image.width > MAX_ICON_DIMENSION || image.height > MAX_ICON_DIMENSION) {
-      throw new Error(
-        `Разрешение превышает ${MAX_ICON_DIMENSION}x${MAX_ICON_DIMENSION}.`,
-      );
+      throw new Error(`Разрешение превышает ${MAX_ICON_DIMENSION}x${MAX_ICON_DIMENSION}.`);
     }
 
     const actionDir = join(this.packsPath, "custom", action);
@@ -116,21 +102,14 @@ export class EmojiUploader {
       const target = COLOR_TARGETS[colorName];
       if (!target) continue;
 
-      const variantBuffer = await this.generateColorVariant(
-        image,
-        target[0],
-        target[1],
-        target[2],
-      );
+      const variantBuffer = await this.generateColorVariant(image, target[0], target[1], target[2]);
 
       const variantPath = join(actionDir, `${colorName}.png`);
       writeFileSync(variantPath, variantBuffer);
       generated.push(colorName);
     }
 
-    this.logger.info(
-      `Generated ${generated.length} color variants for ${action}`,
-    );
+    this.logger.info(`Generated ${generated.length} color variants for ${action}`);
     return generated;
   }
 
@@ -159,8 +138,6 @@ export class EmojiUploader {
 
       const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 
-      // Tint factor: dark areas receive more of the target color,
-      // light areas stay closer to their original brightness.
       const tintFactor = 1 - luminance * 0.6;
 
       const newR = Math.round(targetR * tintFactor + r * (1 - tintFactor));
@@ -177,10 +154,7 @@ export class EmojiUploader {
     return canvas.toBuffer("image/png");
   }
 
-  async generateCustomHexVariant(
-    action: string,
-    hexColor: string,
-  ): Promise<Buffer | null> {
+  async generateCustomHexVariant(action: string, hexColor: string): Promise<Buffer | null> {
     const originalPath = join(this.packsPath, "custom", action, "original.png");
     if (!existsSync(originalPath)) {
       return null;
@@ -199,12 +173,7 @@ export class EmojiUploader {
     const image = await loadImage(originalBuffer);
     const variantBuffer = await this.generateColorVariant(image, r, g, b);
 
-    const variantPath = join(
-      this.packsPath,
-      "custom",
-      action,
-      `hex-${hex.toLowerCase()}.png`,
-    );
+    const variantPath = join(this.packsPath, "custom", action, `hex-${hex.toLowerCase()}.png`);
     writeFileSync(variantPath, variantBuffer);
 
     return variantBuffer;

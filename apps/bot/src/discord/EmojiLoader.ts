@@ -74,11 +74,10 @@ export const EMOJI_ACTIONS: EmojiAction[] = [
 ];
 
 export interface ResolvedEmoji {
-  /** API emoji object for button builders (custom emoji) or null for unicode */
   apiEmoji: APIPartialEmoji | null;
-  /** Unicode string fallback */
+
   unicode: string;
-  /** The resolved display string for text contexts */
+
   display: string;
 }
 
@@ -89,35 +88,19 @@ export class EmojiLoader {
   constructor(assetsPath?: string) {
     const base = assetsPath ?? join(process.cwd(), "assets");
     this.packsPath = join(base, "emojis", "packs");
-
-    // Check which custom Discord emoji are available on this guild
-    // (populated after bot login via refreshAvailableEmoji)
   }
 
-  /**
-   * Refresh the set of available custom emoji from a guild's emoji cache.
-   * Call this once after the bot logs in and on guildAvailable events.
-   */
-  refreshAvailableEmoji(
-    availableEmojis: Array<{ id: string; name: string }>,
-  ): void {
+  refreshAvailableEmoji(availableEmojis: Array<{ id: string; name: string }>): void {
     this.customEmojiAvailable.clear();
     for (const emoji of availableEmojis) {
       this.customEmojiAvailable.set(emoji.id, true);
     }
   }
 
-  /** Whether a custom emoji with this id was seen on any known guild. */
   hasEmoji(emojiId: string): boolean {
     return this.customEmojiAvailable.has(emojiId);
   }
 
-  /**
-   * Resolve an emoji for a given action, considering the icon pack and color.
-   *
-   * For built-in packs (classic, minimal, niako): uses the known Discord emoji IDs.
-   * For custom packs: reads the PNG file from disk and returns a buffer attachment.
-   */
   resolve(action: string, pack: IconPackName, color: string): ResolvedEmoji {
     const def = EMOJI_ACTIONS.find((a) => a.action === action);
     if (!def) {
@@ -157,27 +140,18 @@ export class EmojiLoader {
     };
   }
 
-  private resolveCustom(
-    action: string,
-    color: string,
-    def: EmojiAction,
-  ): ResolvedEmoji {
-    // For custom packs, try to find the colored variant on disk
+  private resolveCustom(action: string, color: string, def: EmojiAction): ResolvedEmoji {
     const colorSlug = this.colorToSlug(color);
     const filePath = join(this.packsPath, "custom", action, `${colorSlug}.png`);
 
     if (existsSync(filePath)) {
-      // Return unicode fallback for now; the actual PNG will be sent as an attachment
-      // when building the panel. The EmojiUploader handles uploading to Discord.
       return {
         apiEmoji: null,
         unicode: def.unicodeFallback,
         display: def.unicodeFallback,
-        // The file path is stored separately for attachment resolution
       } as ResolvedEmoji;
     }
 
-    // Fall back to built-in emoji
     return this.resolveBuiltin(def);
   }
 
@@ -188,19 +162,12 @@ export class EmojiLoader {
     return color.toLowerCase();
   }
 
-  /**
-   * Get the PNG file path for a custom pack action + color combination.
-   * Returns null if the file doesn't exist.
-   */
   getCustomEmojiPath(action: string, color: string): string | null {
     const colorSlug = this.colorToSlug(color);
     const filePath = join(this.packsPath, "custom", action, `${colorSlug}.png`);
     return existsSync(filePath) ? filePath : null;
   }
 
-  /**
-   * Get all available icon pack names.
-   */
   getAvailablePacks(): IconPackName[] {
     const packs: IconPackName[] = ["classic", "minimal", "niako"];
 

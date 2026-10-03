@@ -10,10 +10,7 @@ export class RoomNotFoundError extends AppError {
 
 export class RoomAlreadyExistsError extends AppError {
   public constructor(channelId: string) {
-    super(
-      `Room already exists for channel: ${channelId}`,
-      "ROOM_ALREADY_EXISTS",
-    );
+    super(`Room already exists for channel: ${channelId}`, "ROOM_ALREADY_EXISTS");
 
     this.name = "RoomAlreadyExistsError";
   }
@@ -21,10 +18,7 @@ export class RoomAlreadyExistsError extends AppError {
 
 export class InvalidRoomStateTransitionError extends AppError {
   public constructor(from: string, to: string) {
-    super(
-      `Invalid room state transition: ${from} -> ${to}`,
-      "INVALID_ROOM_STATE_TRANSITION",
-    );
+    super(`Invalid room state transition: ${from} -> ${to}`, "INVALID_ROOM_STATE_TRANSITION");
 
     this.name = "InvalidRoomStateTransitionError";
   }

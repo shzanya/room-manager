@@ -8,11 +8,7 @@ import { rooms } from "../schema";
 
 export class RoomRepository {
   public async findById(roomId: RoomId): Promise<Room | null> {
-    const result = await db
-      .select()
-      .from(rooms)
-      .where(eq(rooms.id, roomId))
-      .limit(1);
+    const result = await db.select().from(rooms).where(eq(rooms.id, roomId)).limit(1);
 
     const room = result[0];
 
@@ -20,11 +16,7 @@ export class RoomRepository {
   }
 
   public async findByChannelId(channelId: ChannelId): Promise<Room | null> {
-    const result = await db
-      .select()
-      .from(rooms)
-      .where(eq(rooms.channelId, channelId))
-      .limit(1);
+    const result = await db.select().from(rooms).where(eq(rooms.channelId, channelId)).limit(1);
 
     const room = result[0];
 
@@ -32,10 +24,7 @@ export class RoomRepository {
   }
 
   public async findByGuildId(guildId: GuildId): Promise<Room[]> {
-    const result = await db
-      .select()
-      .from(rooms)
-      .where(eq(rooms.guildId, guildId));
+    const result = await db.select().from(rooms).where(eq(rooms.guildId, guildId));
 
     return result.map(mapRoom);
   }
@@ -46,10 +35,7 @@ export class RoomRepository {
     return result.map(mapRoom);
   }
 
-  public async findLatestOwned(
-    guildId: GuildId,
-    ownerId: UserId,
-  ): Promise<Room | null> {
+  public async findLatestOwned(guildId: GuildId, ownerId: UserId): Promise<Room | null> {
     const result = await db
       .select()
       .from(rooms)
@@ -88,16 +74,7 @@ export class RoomRepository {
   public async update(
     roomId: RoomId,
     changes: Partial<
-      Pick<
-        Room,
-        | "channelId"
-        | "ownerId"
-        | "name"
-        | "userLimit"
-        | "state"
-        | "locked"
-        | "hidden"
-      >
+      Pick<Room, "channelId" | "ownerId" | "name" | "userLimit" | "state" | "locked" | "hidden">
     >,
   ): Promise<Room | null> {
     const [updated] = await db
@@ -110,12 +87,9 @@ export class RoomRepository {
   }
 
   public async delete(roomId: RoomId): Promise<boolean> {
-    const result = await db
-      .delete(rooms)
-      .where(eq(rooms.id, roomId))
-      .returning({
-        id: rooms.id,
-      });
+    const result = await db.delete(rooms).where(eq(rooms.id, roomId)).returning({
+      id: rooms.id,
+    });
 
     return result.length > 0;
   }

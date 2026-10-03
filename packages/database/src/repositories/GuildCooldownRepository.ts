@@ -16,13 +16,10 @@ export class GuildCooldownRepository {
   }
 
   public async set(guildId: GuildId, expiresAt: Date): Promise<void> {
-    await db
-      .insert(guildCooldowns)
-      .values({ guildId, expiresAt })
-      .onConflictDoUpdate({
-        target: guildCooldowns.guildId,
-        set: { expiresAt },
-      });
+    await db.insert(guildCooldowns).values({ guildId, expiresAt }).onConflictDoUpdate({
+      target: guildCooldowns.guildId,
+      set: { expiresAt },
+    });
   }
 
   public async delete(guildId: GuildId): Promise<void> {
@@ -30,8 +27,6 @@ export class GuildCooldownRepository {
   }
 
   public async deleteExpired(): Promise<void> {
-    await db.delete(guildCooldowns).where(
-      eq(guildCooldowns.expiresAt, new Date()),
-    );
+    await db.delete(guildCooldowns).where(eq(guildCooldowns.expiresAt, new Date()));
   }
 }

@@ -16,7 +16,6 @@ function createConnection(): Redis {
   });
 }
 
-/** Connection for adding jobs to queues. */
 export function createQueueConnection(): Redis {
   if (!queueConnection) {
     queueConnection = createConnection();
@@ -24,7 +23,6 @@ export function createQueueConnection(): Redis {
   return queueConnection;
 }
 
-/** Connection for BullMQ workers (must be separate from queue connection). */
 export function createWorkerConnection(): Redis {
   if (!workerConnection) {
     workerConnection = createConnection();
@@ -35,10 +33,18 @@ export function createWorkerConnection(): Redis {
 export async function closeQueueConnection(): Promise<void> {
   const promises: Promise<void>[] = [];
   if (queueConnection) {
-    promises.push(queueConnection.quit().then(() => { queueConnection = null; }));
+    promises.push(
+      queueConnection.quit().then(() => {
+        queueConnection = null;
+      }),
+    );
   }
   if (workerConnection) {
-    promises.push(workerConnection.quit().then(() => { workerConnection = null; }));
+    promises.push(
+      workerConnection.quit().then(() => {
+        workerConnection = null;
+      }),
+    );
   }
   await Promise.all(promises);
 }

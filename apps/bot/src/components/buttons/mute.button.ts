@@ -25,9 +25,7 @@ export class MuteButton {
         return;
       }
 
-      const room = await this.roomRepository.findByChannelId(
-        member.voice.channelId as ChannelId,
-      );
+      const room = await this.roomRepository.findByChannelId(member.voice.channelId as ChannelId);
 
       if (!room) {
         await interaction.reply({ ...fail(L.common.notPrivateRoom) });
@@ -42,9 +40,7 @@ export class MuteButton {
       const guild = interaction.guild;
       if (!guild) return;
 
-      await interaction.reply(
-        await buildMutesView(guild, interaction.user.id, room.id, "mute"),
-      );
+      await interaction.reply(await buildMutesView(guild, interaction.user.id, room.id, "mute"));
     } catch (error) {
       this.logger.error("Failed to open mute view", error);
     }

@@ -6,21 +6,13 @@ import { roomWhitelists } from "../schema";
 
 export class RoomWhitelistRepository {
   public async add(roomId: string, userId: UserId): Promise<void> {
-    await db
-      .insert(roomWhitelists)
-      .values({ roomId, userId })
-      .onConflictDoNothing();
+    await db.insert(roomWhitelists).values({ roomId, userId }).onConflictDoNothing();
   }
 
   public async remove(roomId: string, userId: UserId): Promise<boolean> {
     const result = await db
       .delete(roomWhitelists)
-      .where(
-        and(
-          eq(roomWhitelists.roomId, roomId),
-          eq(roomWhitelists.userId, userId),
-        ),
-      )
+      .where(and(eq(roomWhitelists.roomId, roomId), eq(roomWhitelists.userId, userId)))
       .returning({ userId: roomWhitelists.userId });
 
     return result.length > 0;

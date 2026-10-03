@@ -23,8 +23,10 @@
     "@types/pino": "^7.0.0"
   },
   "scripts": {
-    "start": "node --env-file=../../.env --import tsx src/shard.ts",
-    "start:bun": "bun run src/shard.ts",
+    "start": "node --env-file=../../.env --import tsx src/index.ts",
+    "start:shard": "node --env-file=../../.env --import tsx src/shard.ts",
+    "start:bun": "bun run src/index.ts",
+    "start:bun:shard": "bun run src/shard.ts",
     "typecheck": "tsc --noEmit"
   }
 }

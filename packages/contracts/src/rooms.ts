@@ -16,9 +16,8 @@ export interface Room {
 
   state: RoomState;
 
-  /** Whether the room is locked (prevents others from joining) */
   locked: boolean;
-  /** Whether the room is hidden (invisible to others) */
+
   hidden: boolean;
 
   createdAt: Date;

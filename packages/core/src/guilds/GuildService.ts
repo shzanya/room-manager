@@ -25,10 +25,7 @@ export class GuildService {
     return guild;
   }
 
-  async update(
-    guildId: GuildId,
-    changes: Partial<GuildConfig>,
-  ): Promise<GuildConfig | null> {
+  async update(guildId: GuildId, changes: Partial<GuildConfig>): Promise<GuildConfig | null> {
     return this.guilds.update(guildId, changes);
   }
 

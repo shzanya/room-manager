@@ -40,9 +40,7 @@ export class KickSelect {
         return;
       }
 
-      const room = await this.roomRepository.findByChannelId(
-        member.voice.channelId as ChannelId,
-      );
+      const room = await this.roomRepository.findByChannelId(member.voice.channelId as ChannelId);
       if (!room) {
         await interaction.editReply({
           ...v2Error(L.kick.title, L.common.roomNotFound),
@@ -57,9 +55,7 @@ export class KickSelect {
         return;
       }
 
-      const targetMember = await guild.members
-        .fetch({ user: targetUserId })
-        .catch(() => null);
+      const targetMember = await guild.members.fetch({ user: targetUserId }).catch(() => null);
       if (!targetMember) {
         await interaction.editReply({
           ...v2Error(L.kick.title, L.access.targetNotFound),
@@ -67,7 +63,6 @@ export class KickSelect {
         return;
       }
 
-      // Anti-self / anti-bot guard
       if (targetUserId === interaction.user.id) {
         await interaction.editReply({
           ...v2Error(L.kick.title, L.common.invalidTarget),
@@ -81,10 +76,7 @@ export class KickSelect {
         return;
       }
 
-      if (
-        !targetMember.voice.channelId ||
-        targetMember.voice.channelId !== room.channelId
-      ) {
+      if (!targetMember.voice.channelId || targetMember.voice.channelId !== room.channelId) {
         await interaction.editReply({
           ...v2Error(L.kick.title, L.access.targetNotInRoom),
         });
@@ -93,7 +85,6 @@ export class KickSelect {
 
       await targetMember.voice.setChannel(null);
 
-      // Thumbnail = the kicked participant.
       const targetAvatar = targetMember.displayAvatarURL({
         extension: "png",
         size: 128,
@@ -104,9 +95,7 @@ export class KickSelect {
           title: L.kick.title,
           actorId: interaction.user.id,
           text: L.kick.doneText,
-          details: [
-            format(L.common.memberLabel, { user: `<@${targetUserId}>` }),
-          ],
+          details: [format(L.common.memberLabel, { user: `<@${targetUserId}>` })],
           avatarUrl: targetAvatar,
         }),
       });

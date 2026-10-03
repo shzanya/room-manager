@@ -6,7 +6,6 @@ import {
   type ChatInputCommandInteraction,
   type CommandInteraction,
   GuildMember,
-  MessageFlags,
   PermissionFlagsBits,
   type TextChannel,
   type VoiceChannel,
@@ -42,8 +41,7 @@ export class SetupCommands {
 
     @SlashOption({
       name: "hub",
-      description:
-        "Голосовой канал для создания комнат (если не указан, будет создан)",
+      description: "Голосовой канал для создания комнат (если не указан, будет создан)",
       required: false,
       type: ApplicationCommandOptionType.Channel,
       channelTypes: [ChannelType.GuildVoice],
@@ -52,8 +50,7 @@ export class SetupCommands {
 
     @SlashOption({
       name: "panel",
-      description:
-        "Текстовый канал для панели управления (если не указан, будет создан)",
+      description: "Текстовый канал для панели управления (если не указан, будет создан)",
       required: false,
       type: ApplicationCommandOptionType.Channel,
       channelTypes: [ChannelType.GuildText],
@@ -65,7 +62,6 @@ export class SetupCommands {
     const L = tOf(interaction.guild?.id);
     const guild = interaction.guild;
 
-    // Only managers may run setup — tribunal answer with their avatar.
     if (
       !guild ||
       !(interaction.member instanceof GuildMember) ||

@@ -1,9 +1,7 @@
 import { z } from "zod";
 
 export const envSchema = z.object({
-  NODE_ENV: z
-    .enum(["development", "test", "production"])
-    .default("development"),
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 
   DISCORD_TOKEN: z.string().min(1),
   DISCORD_CLIENT_ID: z.string().min(1),

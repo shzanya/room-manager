@@ -12,18 +12,12 @@ import {
   UserSelectMenuBuilder,
 } from "discord.js";
 import { ButtonComponent, Discord, SelectMenuComponent } from "discordx";
-import {
-  actorAvatarUrl,
-  v2Action,
-  v2ActionFor,
-  v2Error,
-} from "../../discord/V2";
+import { actorAvatarUrl, v2Action, v2ActionFor, v2Error } from "../../discord/V2";
 import { USER_ACTIONS } from "../../discord/vcActions";
 import { format, tOf } from "../../i18n";
 import { svc } from "../../services/registry";
 import type { SetupService } from "../../services/SetupService";
 
-/** Guild-scoped dictionary for the room these components belong to. */
 function L0(guild: Guild | null | undefined) {
   return tOf(guild?.id);
 }
@@ -49,7 +43,6 @@ export async function buildMutesView(
   const muted = await svc().mutes.list(roomId as import("@room-manager/shared").RoomId);
   const mutedList = muted.map((id) => `<@${id}>`).join(", ");
 
-  // Tribunal-style header with the actor's avatar.
   const payload = v2Action({
     title: L.mutes.title,
     actorId: invokerId,
@@ -60,26 +53,17 @@ export async function buildMutesView(
   const container = payload.components[0];
 
   if (mode === "both" || mode === "mute")
-    container.addActionRowComponents(
-      userRow("room:mutes:mute", L.mutes.addPlaceholder),
-    );
+    container.addActionRowComponents(userRow("room:mutes:mute", L.mutes.addPlaceholder));
   if (mode === "both" || mode === "unmute")
-    container.addActionRowComponents(
-      userRow("room:mutes:unmute", L.mutes.removePlaceholder),
-    );
+    container.addActionRowComponents(userRow("room:mutes:unmute", L.mutes.removePlaceholder));
 
   if (notice) {
-    container.addTextDisplayComponents(
-      new TextDisplayBuilder().setContent(`> ${notice}`),
-    );
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`> ${notice}`));
   }
 
-  // Current state listed BELOW the controls.
   if (mutedList) {
     container.addTextDisplayComponents(
-      new TextDisplayBuilder().setContent(
-        `**${L.mutes.mutedList}** ${mutedList}`,
-      ),
+      new TextDisplayBuilder().setContent(`**${L.mutes.mutedList}** ${mutedList}`),
     );
   }
 
@@ -97,7 +81,6 @@ export async function buildWhitelistView(
   const allowed = await svc().whitelists.list(roomId as import("@room-manager/shared").RoomId);
   const allowedText = allowed.map((id) => `<@${id}>`).join(", ");
 
-  // Tribunal-style header with the actor's avatar.
   const payload = v2Action({
     title: L.access.title,
     actorId: invokerId,
@@ -108,42 +91,27 @@ export async function buildWhitelistView(
   const container = payload.components[0];
 
   if (mode === "both" || mode === "add")
-    container.addActionRowComponents(
-      userRow("room:wl:add", L.access.addPlaceholder),
-    );
+    container.addActionRowComponents(userRow("room:wl:add", L.access.addPlaceholder));
   if (mode === "both" || mode === "remove")
-    container.addActionRowComponents(
-      userRow("room:wl:remove", L.access.removePlaceholder),
-    );
+    container.addActionRowComponents(userRow("room:wl:remove", L.access.removePlaceholder));
 
   if (notice) {
-    container.addTextDisplayComponents(
-      new TextDisplayBuilder().setContent(`> ${notice}`),
-    );
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`> ${notice}`));
   }
 
-  // Current whitelist listed BELOW the controls.
   if (allowedText) {
     container.addTextDisplayComponents(
-      new TextDisplayBuilder().setContent(
-        `**${L.access.listLabel}** ${allowedText}`,
-      ),
+      new TextDisplayBuilder().setContent(`**${L.access.listLabel}** ${allowedText}`),
     );
   }
 
   return { flags: payload.flags, components: [container] };
 }
 
-// Permission flags per Discord API (UseSoundboard = 1n << 42n,
-// UseExternalSounds = 1n << 45n, UseEmbeddedActivities = 1n << 39n).
 const BIT_SOUNDBOARD = PermissionFlagsBits.UseSoundboard;
 const BIT_SOUNDBOARD_EXTERNAL = PermissionFlagsBits.UseExternalSounds;
 const BIT_ACTIVITIES = PermissionFlagsBits.UseEmbeddedActivities;
 
-/**
- * discord.js accepts PascalCase keys with `false` (explicit deny) and
- * `null` (remove overwrite) — no manual bitfield juggling needed.
- */
 async function setSoundboardDenied(
   channel: import("discord.js").VoiceBasedChannel,
   denied: boolean,
@@ -163,24 +131,15 @@ async function setActivitiesDenied(
   });
 }
 
-/** Whether @everyone is denied the given permission bit in the room. */
-export function hasRoomBit(
-  channel: import("discord.js").VoiceBasedChannel,
-  bit: bigint,
-): boolean {
+export function hasRoomBit(channel: import("discord.js").VoiceBasedChannel, bit: bigint): boolean {
   const everyone = channel.guild.roles.everyone;
   const cur = channel.permissionOverwrites.cache.get(everyone.id);
   return cur ? cur.deny.has(bit) : false;
 }
 
-/** The bot must be allowed to edit overwrites on this channel. */
-function botCanEditOverwrites(
-  channel: import("discord.js").VoiceBasedChannel,
-): boolean {
+function botCanEditOverwrites(channel: import("discord.js").VoiceBasedChannel): boolean {
   const me = channel.guild.members.me;
-  return Boolean(
-    me?.permissionsIn(channel).has(PermissionFlagsBits.ManageRoles),
-  );
+  return Boolean(me?.permissionsIn(channel).has(PermissionFlagsBits.ManageRoles));
 }
 
 @Discord()
@@ -191,17 +150,14 @@ export class VoiceControlSelects {
   private readonly setupService: SetupService = svc().setupService;
 
   @SelectMenuComponent({ id: "room:vc:manage" })
-  async onManage(
-    interaction: import("discord.js").StringSelectMenuInteraction,
-  ): Promise<void> {
+  async onManage(interaction: import("discord.js").StringSelectMenuInteraction): Promise<void> {
     const action = interaction.values[0];
     if (!action) return;
 
     if (action === "rename" || action === "limit") {
       const Lm = L0(interaction.guild);
       await interaction.showModal({
-        customId:
-          action === "rename" ? "room:rename:modal" : "room:limit:modal",
+        customId: action === "rename" ? "room:rename:modal" : "room:limit:modal",
         title: action === "rename" ? Lm.rename.modalTitle : Lm.limit.modalTitle,
         components: [
           {
@@ -239,9 +195,7 @@ export class VoiceControlSelects {
       const member = interaction.member;
       if (!(member instanceof GuildMember)) return;
 
-      const room = await this.roomRepository.findByChannelId(
-        interaction.channelId as ChannelId,
-      );
+      const room = await this.roomRepository.findByChannelId(interaction.channelId as ChannelId);
       if (!room || room.ownerId !== interaction.user.id) return;
 
       const guild = interaction.guild;
@@ -263,7 +217,6 @@ export class VoiceControlSelects {
           actorId: interaction.user.id,
         });
 
-        // Unified ephemeral feedback (was silent before).
         await interaction.followUp({
           ...(await v2ActionFor(
             guild,
@@ -279,8 +232,7 @@ export class VoiceControlSelects {
 
       if (action === "soundpad") {
         const denied =
-          hasRoomBit(channel, BIT_SOUNDBOARD) ||
-          hasRoomBit(channel, BIT_SOUNDBOARD_EXTERNAL);
+          hasRoomBit(channel, BIT_SOUNDBOARD) || hasRoomBit(channel, BIT_SOUNDBOARD_EXTERNAL);
         const nowDenied = !denied;
         const L = L0(guild);
 
@@ -299,11 +251,7 @@ export class VoiceControlSelects {
         await svc().logService.send(guild, guild.id as GuildId, {
           type: "soundboard",
           actorId: interaction.user.id,
-          details: [
-            nowDenied
-              ? L0(guild).soundpad.disabledWord
-              : L0(guild).soundpad.enabledWord,
-          ],
+          details: [nowDenied ? L0(guild).soundpad.disabledWord : L0(guild).soundpad.enabledWord],
         });
         await interaction.followUp({
           ...(await v2ActionFor(
@@ -311,9 +259,7 @@ export class VoiceControlSelects {
             interaction.user.id,
             L.soundpad.label,
             format(L.soundpad.doneText, {
-              action: nowDenied
-                ? L.soundpad.disabledWord
-                : L.soundpad.enabledWord,
+              action: nowDenied ? L.soundpad.disabledWord : L.soundpad.enabledWord,
             }),
             [
               format(L.soundpad.status, {
@@ -343,9 +289,7 @@ export class VoiceControlSelects {
           type: "activities",
           actorId: interaction.user.id,
           details: [
-            nowDeniedA
-              ? L0(guild).activities.disabledWord
-              : L0(guild).activities.enabledWord,
+            nowDeniedA ? L0(guild).activities.disabledWord : L0(guild).activities.enabledWord,
           ],
         });
         await interaction.followUp({
@@ -354,9 +298,7 @@ export class VoiceControlSelects {
             interaction.user.id,
             L.activities.label,
             format(L.activities.doneText, {
-              action: nowDeniedA
-                ? L.activities.disabledWord
-                : L.activities.enabledWord,
+              action: nowDeniedA ? L.activities.disabledWord : L.activities.enabledWord,
             }),
             [
               format(L.activities.status, {
@@ -369,24 +311,21 @@ export class VoiceControlSelects {
       }
 
       if (action === "mutes") {
-        await interaction.followUp(
-          await buildMutesView(guild, interaction.user.id, room.id),
-        );
+        await interaction.followUp(await buildMutesView(guild, interaction.user.id, room.id));
         return;
       }
 
       if (action === "wl") {
-        // Hydrate whitelist from existing channel overwrites.
         const allowed = [...channel.permissionOverwrites.cache.values()]
-          .filter(
-            (o) => o.type === 1 && o.allow.has(PermissionFlagsBits.Connect),
-          )
+          .filter((o) => o.type === 1 && o.allow.has(PermissionFlagsBits.Connect))
           .map((o) => o.id);
-        for (const id of allowed) await svc().whitelists.add(room.id as import("@room-manager/shared").RoomId, id as import("@room-manager/shared").UserId);
+        for (const id of allowed)
+          await svc().whitelists.add(
+            room.id as import("@room-manager/shared").RoomId,
+            id as import("@room-manager/shared").UserId,
+          );
 
-        await interaction.followUp(
-          await buildWhitelistView(guild, interaction.user.id, room.id),
-        );
+        await interaction.followUp(await buildWhitelistView(guild, interaction.user.id, room.id));
         return;
       }
 
@@ -414,9 +353,7 @@ export class VoiceControlSelects {
   }
 
   @SelectMenuComponent({ id: /^room:vc:user:/ })
-  async onUserPick(
-    interaction: import("discord.js").StringSelectMenuInteraction,
-  ): Promise<void> {
+  async onUserPick(interaction: import("discord.js").StringSelectMenuInteraction): Promise<void> {
     try {
       await interaction.deferUpdate();
 
@@ -427,9 +364,7 @@ export class VoiceControlSelects {
       const member = interaction.member;
       if (!(member instanceof GuildMember)) return;
 
-      const room = await this.roomRepository.findByChannelId(
-        interaction.channelId as ChannelId,
-      );
+      const room = await this.roomRepository.findByChannelId(interaction.channelId as ChannelId);
       if (!room || room.ownerId !== interaction.user.id) return;
 
       const guild = interaction.guild;
@@ -437,11 +372,11 @@ export class VoiceControlSelects {
       const voiceChannel = await guild.channels.fetch(room.channelId);
       if (!voiceChannel?.isVoiceBased()) return;
 
-      // Thumbnail = target avatar (person the action is about).
       const targetAvatar =
-        (
-          await guild.members.fetch(targetUserId).catch(() => null)
-        )?.displayAvatarURL({ extension: "png", size: 128 }) ?? null;
+        (await guild.members.fetch(targetUserId).catch(() => null))?.displayAvatarURL({
+          extension: "png",
+          size: 128,
+        }) ?? null;
 
       switch (action) {
         case "accessAdd": {
@@ -449,7 +384,10 @@ export class VoiceControlSelects {
             ViewChannel: true,
             Connect: true,
           });
-          await svc().whitelists.add(room.id as import("@room-manager/shared").RoomId, targetUserId as import("@room-manager/shared").UserId);
+          await svc().whitelists.add(
+            room.id as import("@room-manager/shared").RoomId,
+            targetUserId as import("@room-manager/shared").UserId,
+          );
 
           await svc().logService.send(guild, guild.id as GuildId, {
             type: "whitelist",
@@ -475,7 +413,10 @@ export class VoiceControlSelects {
             ViewChannel: null,
             Connect: null,
           });
-          await svc().whitelists.remove(room.id as import("@room-manager/shared").RoomId, targetUserId as import("@room-manager/shared").UserId);
+          await svc().whitelists.remove(
+            room.id as import("@room-manager/shared").RoomId,
+            targetUserId as import("@room-manager/shared").UserId,
+          );
 
           await svc().logService.send(guild, guild.id as GuildId, {
             type: "whitelist",
@@ -484,10 +425,8 @@ export class VoiceControlSelects {
             details: ["убрал"],
           });
 
-          // If target is sitting in this room — kick them out.
           const inside = voiceChannel.members.get(targetUserId);
-          if (inside)
-            await inside.voice.setChannel(null).catch(() => undefined);
+          if (inside) await inside.voice.setChannel(null).catch(() => undefined);
 
           await interaction.editReply({
             ...(await v2ActionFor(
@@ -553,9 +492,7 @@ export class VoiceControlSelects {
               title: L.transfer.title,
               actorId: interaction.user.id,
               text: L.transfer.doneText,
-              details: [
-                format(L.transfer.newOwner, { user: `<@${targetUserId}>` }),
-              ],
+              details: [format(L.transfer.newOwner, { user: `<@${targetUserId}>` })],
               avatarUrl: targetAvatar,
             }),
           });
@@ -571,34 +508,23 @@ export class VoiceControlSelects {
   }
 
   @SelectMenuComponent({ id: "room:mutes:mute" })
-  async onMutePick(
-    interaction: import("discord.js").UserSelectMenuInteraction,
-  ): Promise<void> {
+  async onMutePick(interaction: import("discord.js").UserSelectMenuInteraction): Promise<void> {
     try {
       await interaction.deferUpdate();
 
       const targetUserId = interaction.values[0];
       if (!targetUserId || !interaction.guild || !interaction.channelId) return;
 
-      // Anti-self / anti-bot guard
       if (targetUserId === interaction.user.id) {
         await interaction.editReply({
-          ...v2Error(
-            L0(interaction.guild).mutes.title,
-            L0(interaction.guild).common.invalidTarget,
-          ),
+          ...v2Error(L0(interaction.guild).mutes.title, L0(interaction.guild).common.invalidTarget),
         });
         return;
       }
-      const targetMember = await interaction.guild.members
-        .fetch(targetUserId)
-        .catch(() => null);
+      const targetMember = await interaction.guild.members.fetch(targetUserId).catch(() => null);
       if (targetMember?.user.bot) {
         await interaction.editReply({
-          ...v2Error(
-            L0(interaction.guild).mutes.title,
-            L0(interaction.guild).common.invalidTarget,
-          ),
+          ...v2Error(L0(interaction.guild).mutes.title, L0(interaction.guild).common.invalidTarget),
         });
         return;
       }
@@ -606,30 +532,25 @@ export class VoiceControlSelects {
       const member = interaction.member;
       if (!(member instanceof GuildMember) || !member.voice.channelId) return;
 
-      const room = await this.roomRepository.findByChannelId(
-        member.voice.channelId as ChannelId,
-      );
+      const room = await this.roomRepository.findByChannelId(member.voice.channelId as ChannelId);
       if (!room || room.ownerId !== interaction.user.id) return;
 
-      const voiceChannel = await interaction.guild.channels.fetch(
-        room.channelId,
-      );
+      const voiceChannel = await interaction.guild.channels.fetch(room.channelId);
       if (!voiceChannel?.isVoiceBased()) return;
 
       await voiceChannel.permissionOverwrites.edit(targetUserId, {
         Speak: false,
       });
-      await svc().mutes.add(room.id as import("@room-manager/shared").RoomId, targetUserId as import("@room-manager/shared").UserId);
-
-      await svc().logService.send(
-        interaction.guild,
-        interaction.guild.id as GuildId,
-        {
-          type: "mute",
-          actorId: interaction.user.id,
-          userId: targetUserId,
-        },
+      await svc().mutes.add(
+        room.id as import("@room-manager/shared").RoomId,
+        targetUserId as import("@room-manager/shared").UserId,
       );
+
+      await svc().logService.send(interaction.guild, interaction.guild.id as GuildId, {
+        type: "mute",
+        actorId: interaction.user.id,
+        userId: targetUserId,
+      });
 
       await interaction.editReply(
         await buildMutesView(
@@ -648,9 +569,7 @@ export class VoiceControlSelects {
   }
 
   @SelectMenuComponent({ id: "room:mutes:unmute" })
-  async onUnmutePick(
-    interaction: import("discord.js").StringSelectMenuInteraction,
-  ): Promise<void> {
+  async onUnmutePick(interaction: import("discord.js").StringSelectMenuInteraction): Promise<void> {
     try {
       await interaction.deferUpdate();
 
@@ -658,34 +577,28 @@ export class VoiceControlSelects {
       if (!targetUserId || targetUserId === "__noop__") return;
       if (!interaction.guild || !interaction.channelId) return;
 
-      // Anti-self guard (unmute can target self)
       const member = interaction.member;
       if (!(member instanceof GuildMember) || !member.voice.channelId) return;
 
-      const room = await this.roomRepository.findByChannelId(
-        member.voice.channelId as ChannelId,
-      );
+      const room = await this.roomRepository.findByChannelId(member.voice.channelId as ChannelId);
       if (!room || room.ownerId !== interaction.user.id) return;
 
       await interaction.guild.members.fetch(targetUserId).catch(() => null);
 
-      const ch = await interaction.guild.channels
-        .fetch(room.channelId)
-        .catch(() => null);
+      const ch = await interaction.guild.channels.fetch(room.channelId).catch(() => null);
       if (ch?.isVoiceBased()) {
         await ch.permissionOverwrites.edit(targetUserId, { Speak: null });
       }
-      await svc().mutes.remove(room.id as import("@room-manager/shared").RoomId, targetUserId as import("@room-manager/shared").UserId);
-
-      await svc().logService.send(
-        interaction.guild,
-        interaction.guild.id as GuildId,
-        {
-          type: "unmute",
-          actorId: interaction.user.id,
-          userId: targetUserId,
-        },
+      await svc().mutes.remove(
+        room.id as import("@room-manager/shared").RoomId,
+        targetUserId as import("@room-manager/shared").UserId,
       );
+
+      await svc().logService.send(interaction.guild, interaction.guild.id as GuildId, {
+        type: "unmute",
+        actorId: interaction.user.id,
+        userId: targetUserId,
+      });
 
       await interaction.editReply(
         await buildMutesView(
@@ -704,23 +617,14 @@ export class VoiceControlSelects {
   }
 
   @ButtonComponent({ id: "room:mutes:view" })
-  async onMutesBack(
-    interaction: import("discord.js").ButtonInteraction,
-  ): Promise<void> {
+  async onMutesBack(interaction: import("discord.js").ButtonInteraction): Promise<void> {
     try {
       await interaction.deferUpdate();
 
       const member = interaction.member;
-      if (
-        !(member instanceof GuildMember) ||
-        !member.voice.channelId ||
-        !interaction.guild
-      )
-        return;
+      if (!(member instanceof GuildMember) || !member.voice.channelId || !interaction.guild) return;
 
-      const room = await this.roomRepository.findByChannelId(
-        member.voice.channelId as ChannelId,
-      );
+      const room = await this.roomRepository.findByChannelId(member.voice.channelId as ChannelId);
       if (!room) return;
 
       await interaction.editReply(
@@ -732,31 +636,18 @@ export class VoiceControlSelects {
   }
 
   @ButtonComponent({ id: "room:wl:view" })
-  async onWlBack(
-    interaction: import("discord.js").ButtonInteraction,
-  ): Promise<void> {
+  async onWlBack(interaction: import("discord.js").ButtonInteraction): Promise<void> {
     try {
       await interaction.deferUpdate();
 
       const member = interaction.member;
-      if (
-        !(member instanceof GuildMember) ||
-        !member.voice.channelId ||
-        !interaction.guild
-      )
-        return;
+      if (!(member instanceof GuildMember) || !member.voice.channelId || !interaction.guild) return;
 
-      const room = await this.roomRepository.findByChannelId(
-        member.voice.channelId as ChannelId,
-      );
+      const room = await this.roomRepository.findByChannelId(member.voice.channelId as ChannelId);
       if (!room) return;
 
       await interaction.editReply(
-        await buildWhitelistView(
-          interaction.guild,
-          interaction.user.id,
-          room.id,
-        ),
+        await buildWhitelistView(interaction.guild, interaction.user.id, room.id),
       );
     } catch (error) {
       this.logger.error("wl back failed", error);
@@ -764,16 +655,13 @@ export class VoiceControlSelects {
   }
 
   @SelectMenuComponent({ id: "room:wl:add" })
-  async onWlAdd(
-    interaction: import("discord.js").UserSelectMenuInteraction,
-  ): Promise<void> {
+  async onWlAdd(interaction: import("discord.js").UserSelectMenuInteraction): Promise<void> {
     try {
       await interaction.deferUpdate();
 
       const targetUserId = interaction.values[0];
       if (!targetUserId || !interaction.guild || !interaction.channelId) return;
 
-      // Anti-self / anti-bot guard
       if (targetUserId === interaction.user.id) {
         await interaction.editReply({
           ...v2Error(
@@ -783,9 +671,7 @@ export class VoiceControlSelects {
         });
         return;
       }
-      const targetMember = await interaction.guild.members
-        .fetch(targetUserId)
-        .catch(() => null);
+      const targetMember = await interaction.guild.members.fetch(targetUserId).catch(() => null);
       if (targetMember?.user.bot) {
         await interaction.editReply({
           ...v2Error(
@@ -799,9 +685,7 @@ export class VoiceControlSelects {
       const member = interaction.member;
       if (!(member instanceof GuildMember) || !member.voice.channelId) return;
 
-      const room = await this.roomRepository.findByChannelId(
-        member.voice.channelId as ChannelId,
-      );
+      const room = await this.roomRepository.findByChannelId(member.voice.channelId as ChannelId);
       if (!room || room.ownerId !== interaction.user.id) return;
 
       const channel = await interaction.guild.channels.fetch(room.channelId);
@@ -811,7 +695,10 @@ export class VoiceControlSelects {
         ViewChannel: true,
         Connect: true,
       });
-      await svc().whitelists.add(room.id as import("@room-manager/shared").RoomId, targetUserId as import("@room-manager/shared").UserId);
+      await svc().whitelists.add(
+        room.id as import("@room-manager/shared").RoomId,
+        targetUserId as import("@room-manager/shared").UserId,
+      );
 
       await interaction.editReply(
         await buildWhitelistView(
@@ -830,9 +717,7 @@ export class VoiceControlSelects {
   }
 
   @SelectMenuComponent({ id: "room:wl:remove" })
-  async onWlRemove(
-    interaction: import("discord.js").StringSelectMenuInteraction,
-  ): Promise<void> {
+  async onWlRemove(interaction: import("discord.js").StringSelectMenuInteraction): Promise<void> {
     try {
       await interaction.deferUpdate();
 
@@ -843,9 +728,7 @@ export class VoiceControlSelects {
       const member = interaction.member;
       if (!(member instanceof GuildMember) || !member.voice.channelId) return;
 
-      const room = await this.roomRepository.findByChannelId(
-        member.voice.channelId as ChannelId,
-      );
+      const room = await this.roomRepository.findByChannelId(member.voice.channelId as ChannelId);
       if (!room || room.ownerId !== interaction.user.id) return;
 
       const channel = await interaction.guild.channels.fetch(room.channelId);
@@ -855,9 +738,11 @@ export class VoiceControlSelects {
         ViewChannel: null,
         Connect: null,
       });
-      await svc().whitelists.remove(room.id as import("@room-manager/shared").RoomId, targetUserId as import("@room-manager/shared").UserId);
+      await svc().whitelists.remove(
+        room.id as import("@room-manager/shared").RoomId,
+        targetUserId as import("@room-manager/shared").UserId,
+      );
 
-      // If target is sitting in this room — kick them out.
       const inside = channel.members.get(targetUserId);
       if (inside) await inside.voice.setChannel(null).catch(() => undefined);
 

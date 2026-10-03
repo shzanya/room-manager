@@ -26,9 +26,7 @@ export class InfoButton {
         return;
       }
 
-      const room = await this.roomRepository.findByChannelId(
-        member.voice.channelId as ChannelId,
-      );
+      const room = await this.roomRepository.findByChannelId(member.voice.channelId as ChannelId);
       if (!room) {
         await interaction.editReply({ ...fail(L.common.roomNotFound) });
         return;
@@ -43,8 +41,7 @@ export class InfoButton {
       const channel = await guild.channels.fetch(room.channelId);
       const memberCount = channel?.isVoiceBased() ? channel.members.size : 0;
 
-      const limitText =
-        room.userLimit === 0 ? L.limit.noLimit : String(room.userLimit);
+      const limitText = room.userLimit === 0 ? L.limit.noLimit : String(room.userLimit);
 
       await interaction.editReply({
         ...v2Action({

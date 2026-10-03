@@ -29,9 +29,7 @@ export class KickButton {
         return;
       }
 
-      const room = await this.roomRepository.findByChannelId(
-        member.voice.channelId as ChannelId,
-      );
+      const room = await this.roomRepository.findByChannelId(member.voice.channelId as ChannelId);
       if (!room) {
         await interaction.reply({ ...fail(L.common.notPrivateRoom) });
         return;
@@ -47,10 +45,7 @@ export class KickButton {
           title: L.kick.title,
           actorId: interaction.user.id,
           text: L.kick.promptText,
-          avatarUrl: await actorAvatarUrl(
-            interaction.guild ?? null,
-            interaction.user.id,
-          ),
+          avatarUrl: await actorAvatarUrl(interaction.guild ?? null, interaction.user.id),
           rows: [
             new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(
               new UserSelectMenuBuilder()

@@ -1,4 +1,4 @@
-import { integer, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
+import { pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
 
 import { guilds } from "./guilds";
 
@@ -9,7 +9,5 @@ export const guildCooldowns = pgTable("guild_cooldowns", {
 
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

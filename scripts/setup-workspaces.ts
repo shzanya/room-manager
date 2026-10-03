@@ -78,11 +78,7 @@ function createAppPackageJson(name: string): PackageJson {
   };
 }
 
-async function writeWorkspace(
-  name: string,
-  relativePath: string,
-  isApp = false,
-): Promise<void> {
+async function writeWorkspace(name: string, relativePath: string, isApp = false): Promise<void> {
   const directory = join(root, relativePath);
   const packagePath = join(directory, "package.json");
 

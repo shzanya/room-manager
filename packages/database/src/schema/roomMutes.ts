@@ -9,7 +9,5 @@ export const roomMutes = pgTable("room_mutes", {
 
   userId: varchar("user_id", { length: 20 }).notNull(),
 
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

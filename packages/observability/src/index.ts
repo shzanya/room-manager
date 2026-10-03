@@ -1,26 +1,24 @@
 export {
+  createHealthChecker,
+  type HealthServerDeps,
+  startHealthServer,
+} from "./health";
+export {
+  createChildLogger,
   createStructuredLogger,
   getLogger,
-  createChildLogger,
 } from "./logger";
-
 export {
+  activeRooms,
+  dbQueryDuration,
+  discordLatency,
+  getMetrics,
+  getMetricsContentType,
+  interactionCounter,
+  redisOperationDuration,
   register,
   roomCleanupDuration,
   roomCleanupErrors,
   roomsCreated,
   roomsDeleted,
-  activeRooms,
-  redisOperationDuration,
-  dbQueryDuration,
-  interactionCounter,
-  discordLatency,
-  getMetrics,
-  getMetricsContentType,
 } from "./metrics";
-
-export {
-  startHealthServer,
-  createHealthChecker,
-  type HealthServerDeps,
-} from "./health";

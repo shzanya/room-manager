@@ -1,6 +1,5 @@
 import type { Dictionary } from "./ru";
 
-/** English mirror — must structurally match the Russian dictionary. */
 export const en: Dictionary = {
   meta: { name: "English" },
 
@@ -11,8 +10,7 @@ export const en: Dictionary = {
     error: "Something went wrong. Please try again.",
     timeout: "Timed out waiting.",
     roomNotFound: "Private room not found.",
-    botMissingPerms:
-      "The bot needs the Manage Roles permission on this channel.",
+    botMissingPerms: "The bot needs the Manage Roles permission on this channel.",
     invalidTarget: "You can't interact with yourself or a bot.",
     notPrivateRoom: "This is not a private room.",
     userLabel: "User: {user}",
@@ -239,8 +237,7 @@ export const en: Dictionary = {
 
     iconsTitle: "🎨 Icons",
     iconsPack: "**Pack:** {pack}",
-    iconsNote:
-      "To add a pack just create a folder in `assets/emojis/packs/` (see docs/emojis.md).",
+    iconsNote: "To add a pack just create a folder in `assets/emojis/packs/` (see docs/emojis.md).",
     packPlaceholder: "Icon pack",
     presetPlaceholder: "Color preset",
     colorAllPlaceholder: "Color of all icons",
@@ -295,11 +292,9 @@ export const en: Dictionary = {
       "_The button panel lives where you choose. Mode changes apply to active rooms immediately._",
     modePlaceholder: "Where the room control lives",
     modeBoth: "Panel and voice",
-    modeBothDesc:
-      "Buttons in the panel channel and the menu inside the voice room",
+    modeBothDesc: "Buttons in the panel channel and the menu inside the voice room",
     modeVoice: "Voice only",
-    modeVoiceDesc:
-      "Menu only inside the voice room; the panel channel is deleted",
+    modeVoiceDesc: "Menu only inside the voice room; the panel channel is deleted",
     modeChat: "Panel only",
     modeChatDesc: "Buttons only in the panel channel; voice menus are removed",
     btnInstantOn: "Instant deletion: on",
@@ -321,16 +316,14 @@ export const en: Dictionary = {
     muteRoleFlashOff: "Mute role granting is disabled",
 
     rolesTitle: "👥 Roles & Policies",
-    rolesDesc:
-      "_Configure who can create rooms, manage them, use whitelist, mute, and settings._",
+    rolesDesc: "_Configure who can create rooms, manage them, use whitelist, mute, and settings._",
     rolesActionPlaceholder: "Action to configure",
     rolesAllowGroups: "Allowed groups",
     rolesDenyGroups: "Denied groups",
     rolesAllowRoles: "Allowed roles (ID)",
     rolesDenyRoles: "Denied roles (ID)",
     rolesMuteRole: "Mute role",
-    rolesMuteRoleDesc:
-      "Role granted when muted in a room (Speak ❌, SendMessages ❌)",
+    rolesMuteRoleDesc: "Role granted when muted in a room (Speak ❌, SendMessages ❌)",
     rolesAdminRoles: "Admin roles (bypass all checks)",
     rolesGroupAdministrators: "Administrators",
     rolesGroupModerators: "Moderators",
@@ -384,8 +377,7 @@ export const en: Dictionary = {
     iconTitle: "Custom icon",
     bannerFileTitle: "Banner by file",
     bannerFileText: "send the image as the next message in this channel",
-    iconUnknownAction:
-      "Unknown action `{action}`. Examples: limit, lock, kick.",
+    iconUnknownAction: "Unknown action `{action}`. Examples: limit, lock, kick.",
     iconSendPrompt: "send a PNG icon for `{action}` as the next message",
     iconSpecs: "Up to 512 KB and 512x512 · waiting: 2 minutes",
     uploadFormats: "Formats: PNG, JPG or WebP · up to 8 MB",

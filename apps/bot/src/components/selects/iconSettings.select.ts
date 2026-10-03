@@ -23,10 +23,7 @@ export class IconSettingsSelects {
 
   @SelectMenuComponent({ id: "setup:set:section" })
   async onSection(interaction: StringSelectMenuInteraction): Promise<void> {
-    await this.safe(
-      () => this.iconSettings.handleSection(interaction),
-      "section",
-    );
+    await this.safe(() => this.iconSettings.handleSection(interaction), "section");
   }
 
   @ButtonComponent({ id: "setup:set:home" })
@@ -36,26 +33,17 @@ export class IconSettingsSelects {
 
   @SelectMenuComponent({ id: "setup:tpl" })
   async onTemplate(interaction: StringSelectMenuInteraction): Promise<void> {
-    await this.safe(
-      () => this.iconSettings.handleTemplate(interaction),
-      "template",
-    );
+    await this.safe(() => this.iconSettings.handleTemplate(interaction), "template");
   }
 
   @SelectMenuComponent({ id: "setup:ctrl:mode" })
   async onControlMode(interaction: StringSelectMenuInteraction): Promise<void> {
-    await this.safe(
-      () => this.iconSettings.handleControlMode(interaction),
-      "control mode",
-    );
+    await this.safe(() => this.iconSettings.handleControlMode(interaction), "control mode");
   }
 
   @SelectMenuComponent({ id: "setup:lang" })
   async onLanguage(interaction: StringSelectMenuInteraction): Promise<void> {
-    await this.safe(
-      () => this.iconSettings.handleLanguage(interaction),
-      "language",
-    );
+    await this.safe(() => this.iconSettings.handleLanguage(interaction), "language");
   }
 
   @ButtonComponent({ id: "setup:ctrl:instant" })
@@ -76,10 +64,7 @@ export class IconSettingsSelects {
 
   @ButtonComponent({ id: "setup:ctrl:logs" })
   async onLogsToggle(interaction: ButtonInteraction): Promise<void> {
-    await this.safe(
-      () => this.iconSettings.handleLogsToggle(interaction),
-      "logs toggle",
-    );
+    await this.safe(() => this.iconSettings.handleLogsToggle(interaction), "logs toggle");
   }
 
   @SelectMenuComponent({ id: "setup:icons:pack" })
@@ -89,21 +74,13 @@ export class IconSettingsSelects {
 
   @SelectMenuComponent({ id: "setup:icons:preset" })
   async onPreset(interaction: StringSelectMenuInteraction): Promise<void> {
-    await this.safe(
-      () => this.iconSettings.handlePreset(interaction),
-      "preset",
-    );
+    await this.safe(() => this.iconSettings.handlePreset(interaction), "preset");
   }
 
   @SelectMenuComponent({ id: "setup:icons:global" })
   async onGlobal(interaction: StringSelectMenuInteraction): Promise<void> {
-    await this.safe(
-      () => this.iconSettings.handleGlobal(interaction),
-      "global",
-    );
+    await this.safe(() => this.iconSettings.handleGlobal(interaction), "global");
   }
-
-  // ── Channels ────────────────────────────────────────────────────────
 
   @SelectMenuComponent({ id: "setup:channels:category" })
   async onChannelsCategory(interaction: ChannelSelectMenuInteraction): Promise<void> {
@@ -115,17 +92,11 @@ export class IconSettingsSelects {
 
   @SelectMenuComponent({ id: "setup:channels:creator" })
   async onChannelsCreator(interaction: ChannelSelectMenuInteraction): Promise<void> {
-    await this.safe(
-      () => this.iconSettings.handleChannelsCreator(interaction),
-      "channels creator",
-    );
+    await this.safe(() => this.iconSettings.handleChannelsCreator(interaction), "channels creator");
   }
 
   @SelectMenuComponent({ id: "setup:channels:log" })
   async onChannelsLog(interaction: ChannelSelectMenuInteraction): Promise<void> {
-    await this.safe(
-      () => this.iconSettings.handleChannelsLog(interaction),
-      "channels log",
-    );
+    await this.safe(() => this.iconSettings.handleChannelsLog(interaction), "channels log");
   }
 }

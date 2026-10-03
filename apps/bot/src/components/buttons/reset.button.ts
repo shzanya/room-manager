@@ -28,9 +28,7 @@ export class ResetButton {
         return;
       }
 
-      const room = await this.roomRepository.findByChannelId(
-        member.voice.channelId as ChannelId,
-      );
+      const room = await this.roomRepository.findByChannelId(member.voice.channelId as ChannelId);
       if (!room) {
         await interaction.editReply({ ...fail(L.common.roomNotFound) });
         return;
@@ -59,20 +57,15 @@ export class ResetButton {
       await channel.setName(L.reset.defaultName);
       await channel.setUserLimit(defaultLimit);
 
-      // Restore privacy by re-syncing with the category (copies its
-      // @everyone deny + bot allow), keeping the model in one place.
       if (config?.categoryId) {
         await channel.lockPermissions().catch(() => undefined);
       } else {
-        // No category: fall back to clearing the @everyone overrides.
         await channel.permissionOverwrites.edit(guild.roles.everyone, {
           Connect: null,
           ViewChannel: null,
         });
       }
 
-      // Remove per-member overwrites created by Access/Mute management,
-      // but keep the owner's own access.
       for (const [, overwrite] of channel.permissionOverwrites.cache) {
         const isBot = overwrite.id === guild.members.me?.id;
         const isOwner = overwrite.id === room.ownerId;
@@ -83,7 +76,6 @@ export class ResetButton {
         }
       }
 
-      // Make sure the owner can still see/join after the reset.
       await channel.permissionOverwrites
         .edit(room.ownerId, { ViewChannel: true, Connect: true })
         .catch(() => undefined);
@@ -96,19 +88,13 @@ export class ResetButton {
       });
 
       await interaction.editReply({
-        ...(await v2ActionFor(
-          guild,
-          interaction.user.id,
-          L.reset.title,
-          L.reset.doneText,
-          [
-            format(L.reset.detailName, { name: L.reset.defaultName }),
-            format(L.reset.detailLimit, {
-              limit: defaultLimit === 0 ? L.limit.noLimit : defaultLimit,
-            }),
-            L.reset.detailOverwrites,
-          ],
-        )),
+        ...(await v2ActionFor(guild, interaction.user.id, L.reset.title, L.reset.doneText, [
+          format(L.reset.detailName, { name: L.reset.defaultName }),
+          format(L.reset.detailLimit, {
+            limit: defaultLimit === 0 ? L.limit.noLimit : defaultLimit,
+          }),
+          L.reset.detailOverwrites,
+        ])),
       });
     } catch (error) {
       this.logger.error("Failed to reset room", error);

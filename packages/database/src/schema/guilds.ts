@@ -1,12 +1,4 @@
-import {
-  boolean,
-  integer,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-  varchar,
-} from "drizzle-orm/pg-core";
+import { boolean, integer, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 
 export const guilds = pgTable("guilds", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -21,9 +13,7 @@ export const guilds = pgTable("guilds", {
 
   defaultUserLimit: integer("default_user_limit").notNull().default(0),
   deleteDelaySeconds: integer("delete_delay_seconds").notNull().default(5),
-  creationCooldownSeconds: integer("creation_cooldown_seconds")
-    .notNull()
-    .default(0),
+  creationCooldownSeconds: integer("creation_cooldown_seconds").notNull().default(0),
   accentColor: integer("accent_color").notNull().default(0x2b2d31),
 
   bannerUrl: text("banner_url"),
@@ -35,10 +25,6 @@ export const guilds = pgTable("guilds", {
 
   enabled: boolean("enabled").notNull().default(true),
 
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

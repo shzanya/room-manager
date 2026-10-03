@@ -46,7 +46,6 @@ interface CacheEntry {
   hash: string;
 }
 
-
 function colorSlug(color: string): string {
   return color.startsWith("#")
     ? `H${color.slice(1, 3)}${color.slice(4, 6)}`.toUpperCase()
@@ -72,10 +71,6 @@ function rgbOfColor(color: string): [number, number, number] | null {
   ];
 }
 
-/**
- * Application-level emoji pipeline — backed by PostgreSQL.
- * Table: app_emoji_cache → name, data{jsonb{id,name,hash}}
- */
 export class AppEmojiService {
   private cache = new Map<string, CacheEntry>();
   private readonly legacyEmojisDir: string;
@@ -88,10 +83,11 @@ export class AppEmojiService {
     private readonly client: Client,
     private readonly emojiRepo: AppEmojiCacheRepository,
   ) {
-    this.legacyEmojisDir = join(process.cwd(), "assets", "emojis");
+    const local = join(process.cwd(), "assets", "emojis");
+    this.legacyEmojisDir = existsSync(local)
+      ? local
+      : join(process.cwd(), "apps", "bot", "assets", "emojis");
   }
-
-  // ── PG persistence ─────────────────────────────────────────────
 
   private async loadCache(): Promise<void> {
     try {
@@ -113,8 +109,6 @@ export class AppEmojiService {
     }
   }
 
-  // ── Discord emoji cache ──────────────────────────────────────────
-
   private async ensureDiscordCacheFetched(): Promise<void> {
     if (this.emojiCacheFetched) return;
     await this.client.application?.emojis.fetch();
@@ -125,8 +119,6 @@ export class AppEmojiService {
     if (this.cache.size > 0) return;
     await this.loadCache();
   }
-
-  // ── Public API ───────────────────────────────────────────────────
 
   get(action: EmojiKey, color: string): (CacheEntry & { name: string }) | null {
     const key = this.nameOf(action, color);
@@ -150,7 +142,7 @@ export class AppEmojiService {
   }
 
   private packDirs(): string[] {
-    const packsDir = join(process.cwd(), "assets", "emojis", "packs");
+    const packsDir = join(this.legacyEmojisDir, "packs");
     try {
       if (!existsSync(packsDir)) return [];
       return readdirSync(packsDir, { withFileTypes: true })
@@ -227,17 +219,13 @@ export class AppEmojiService {
       buffer = await this.uploader.tintBuffer(buffer, rgb[0], rgb[1], rgb[2]);
     }
 
-    const hash = createHash("md5")
-      .update(source)
-      .update(color.toLowerCase())
-      .digest("hex");
+    const hash = createHash("md5").update(source).update(color.toLowerCase()).digest("hex");
 
     const cached = this.cache.get(name);
     if (cached && cached.hash === hash && app.emojis.cache.has(cached.id)) {
       return cached;
     }
 
-    // Same content under a different name → adopt instead of duplicating.
     for (const [otherName, entry] of this.cache) {
       if (entry.hash === hash && otherName !== name) {
         await this.saveEntry(name, entry);

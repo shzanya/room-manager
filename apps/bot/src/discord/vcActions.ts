@@ -1,9 +1,8 @@
-/** The 10 room actions available in the in-voice management select menu. */
 export interface VCOption {
   value: string;
   emoji: string;
   label: string;
-  /** Canonical icon action key used by AppEmojiService. */
+
   iconAction?: string;
 }
 
@@ -41,8 +40,7 @@ export const VC_SELECT_OPTIONS: VCOption[] = [
     label: "Управление мутами",
     iconAction: "mute",
   },
-  // Labels are rewritten at send time to reflect the current state
-  // ("Саундпад: разрешён / запрещён") by VoiceStateHandler.
+
   {
     value: "soundpad",
     emoji: "🔊",
@@ -59,7 +57,6 @@ export const VC_SELECT_OPTIONS: VCOption[] = [
 
 export const USER_ACTIONS = new Set(["kick"]);
 
-/** Map vc-action values to the canonical icon action keys used everywhere. */
 export const VC_TO_ICON_ACTION: Record<string, string> = {
   rename: "rename",
   limit: "limit",

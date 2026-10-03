@@ -1,17 +1,8 @@
-import {
-  Counter,
-  Gauge,
-  Histogram,
-  Registry,
-  collectDefaultMetrics,
-} from "prom-client";
+import { Counter, collectDefaultMetrics, Gauge, Histogram, Registry } from "prom-client";
 
 export const register = new Registry();
 
-// Default Node.js metrics (event loop lag, GC, memory, etc.)
 collectDefaultMetrics({ register });
-
-// ── Custom Metrics ──────────────────────────────────────────────────
 
 export const roomCleanupDuration = new Histogram({
   name: "room_cleanup_duration_seconds",

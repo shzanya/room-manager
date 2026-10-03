@@ -45,10 +45,7 @@ export class GuildSettingsRepository {
       if (data.locale !== undefined) updateData.locale = data.locale;
       if (data.emojiCache !== undefined) updateData.emojiCache = data.emojiCache;
 
-      await db
-        .update(guildSettings)
-        .set(updateData)
-        .where(eq(guildSettings.guildId, guildId));
+      await db.update(guildSettings).set(updateData).where(eq(guildSettings.guildId, guildId));
     } else {
       await db.insert(guildSettings).values({
         guildId,
@@ -63,7 +60,12 @@ export class GuildSettingsRepository {
 
   async updatePartial(
     guildId: GuildId,
-    patch: Partial<Pick<GuildSettingsRow, "rolePolicy" | "controlSettings" | "panelText" | "locale" | "emojiCache">>,
+    patch: Partial<
+      Pick<
+        GuildSettingsRow,
+        "rolePolicy" | "controlSettings" | "panelText" | "locale" | "emojiCache"
+      >
+    >,
   ): Promise<void> {
     const existing = await this.get(guildId);
 
@@ -75,10 +77,7 @@ export class GuildSettingsRepository {
       if (patch.locale !== undefined) updateData.locale = patch.locale;
       if (patch.emojiCache !== undefined) updateData.emojiCache = patch.emojiCache;
 
-      await db
-        .update(guildSettings)
-        .set(updateData)
-        .where(eq(guildSettings.guildId, guildId));
+      await db.update(guildSettings).set(updateData).where(eq(guildSettings.guildId, guildId));
     } else {
       await db.insert(guildSettings).values({
         guildId,
@@ -95,7 +94,6 @@ export class GuildSettingsRepository {
     await db.delete(guildSettings).where(eq(guildSettings.guildId, guildId));
   }
 
-  /** Load all guild settings rows (for boot-time preload). */
   async getAll(): Promise<GuildSettingsRow[]> {
     const rows = await db.select().from(guildSettings);
     return rows.map((row) => ({

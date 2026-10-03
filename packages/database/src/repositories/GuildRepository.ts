@@ -9,11 +9,7 @@ import { guilds } from "../schema";
 
 export class GuildRepository {
   async findById(guildId: GuildId): Promise<GuildConfig | null> {
-    const result = await db
-      .select()
-      .from(guilds)
-      .where(eq(guilds.guildId, guildId))
-      .limit(1);
+    const result = await db.select().from(guilds).where(eq(guilds.guildId, guildId)).limit(1);
 
     const guild = result[0];
 
@@ -44,10 +40,7 @@ export class GuildRepository {
     return guild ? mapGuildConfig(guild) : null;
   }
 
-  async update(
-    guildId: GuildId,
-    config: Partial<GuildConfig>,
-  ): Promise<GuildConfig | null> {
+  async update(guildId: GuildId, config: Partial<GuildConfig>): Promise<GuildConfig | null> {
     const updateData: Record<string, unknown> = {
       ...config,
       updatedAt: new Date(),
@@ -67,12 +60,9 @@ export class GuildRepository {
   }
 
   async delete(guildId: GuildId): Promise<boolean> {
-    const result = await db
-      .delete(guilds)
-      .where(eq(guilds.guildId, guildId))
-      .returning({
-        guildId: guilds.guildId,
-      });
+    const result = await db.delete(guilds).where(eq(guilds.guildId, guildId)).returning({
+      guildId: guilds.guildId,
+    });
 
     return result.length > 0;
   }

@@ -1,9 +1,6 @@
 import type { RoomWhitelistRepository } from "@room-manager/database";
 import type { RoomId, UserId } from "@room-manager/shared";
 
-/**
- * PG-backed per-room whitelist.
- */
 export function createWhitelistRegistry(repo: RoomWhitelistRepository) {
   return {
     async add(roomId: RoomId, userId: UserId): Promise<void> {

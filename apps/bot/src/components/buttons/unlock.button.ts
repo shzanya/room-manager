@@ -28,9 +28,7 @@ export class UnlockButton {
         return;
       }
 
-      const room = await this.roomRepository.findByChannelId(
-        member.voice.channelId as ChannelId,
-      );
+      const room = await this.roomRepository.findByChannelId(member.voice.channelId as ChannelId);
       if (!room) {
         await interaction.editReply({ ...fail(L.common.roomNotFound) });
         return;
@@ -64,13 +62,9 @@ export class UnlockButton {
       await this.roomRepository.update(room.id, { locked: false });
 
       await interaction.editReply({
-        ...(await v2ActionFor(
-          guild,
-          interaction.user.id,
-          L.access.title,
-          L.lock.openedText,
-          [L.lock.allowedDetail],
-        )),
+        ...(await v2ActionFor(guild, interaction.user.id, L.access.title, L.lock.openedText, [
+          L.lock.allowedDetail,
+        ])),
       });
       await this.setupService.refreshPanel(guild);
     } catch (error) {

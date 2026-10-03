@@ -6,9 +6,8 @@ import type { GuildId } from "@room-manager/shared";
 import type { Attachment } from "discord.js";
 
 const ALLOWED_MIME_TYPES = ["image/png", "image/jpeg", "image/webp"];
-const MAX_FILE_SIZE = 8 * 1024 * 1024; // 8MB
+const MAX_FILE_SIZE = 8 * 1024 * 1024;
 
-/** Default panel banner used when guild bannerUrl is null. */
 const DEFAULT_BANNER_URL = "https://i.imgur.com/AuKVxor.gif";
 
 export interface BannerState {
@@ -25,7 +24,10 @@ export class BannerService {
     private readonly logger: Logger,
     private readonly guildService: GuildService,
   ) {
-    this.assetsPath = join(process.cwd(), "assets", "panel");
+    const localAssets = join(process.cwd(), "assets", "panel");
+    this.assetsPath = existsSync(localAssets)
+      ? localAssets
+      : join(process.cwd(), "apps", "bot", "assets", "panel");
     this.bannersPath = join(this.assetsPath, "banners");
 
     if (!existsSync(this.bannersPath)) {
@@ -50,10 +52,7 @@ export class BannerService {
       };
     }
 
-    if (
-      config.bannerUrl.startsWith("http://") ||
-      config.bannerUrl.startsWith("https://")
-    ) {
+    if (config.bannerUrl.startsWith("http://") || config.bannerUrl.startsWith("https://")) {
       return {
         type: "custom_url",
         displayUrl: config.bannerUrl,
@@ -77,9 +76,7 @@ export class BannerService {
     };
   }
 
-  async validateAttachment(
-    attachment: Attachment,
-  ): Promise<{ valid: boolean; error?: string }> {
+  async validateAttachment(attachment: Attachment): Promise<{ valid: boolean; error?: string }> {
     if (attachment.size > MAX_FILE_SIZE) {
       return {
         valid: false,
@@ -102,8 +99,7 @@ export class BannerService {
     if (!hasValidExtension) {
       return {
         valid: false,
-        error:
-          "Неподдерживаемое расширение файла. Допустимые: .png, .jpg, .jpeg, .webp.",
+        error: "Неподдерживаемое расширение файла. Допустимые: .png, .jpg, .jpeg, .webp.",
       };
     }
 
@@ -144,10 +140,7 @@ export class BannerService {
     return { valid: true };
   }
 
-  async saveUploadedBanner(
-    guildId: GuildId,
-    attachment: Attachment,
-  ): Promise<string> {
+  async saveUploadedBanner(guildId: GuildId, attachment: Attachment): Promise<string> {
     const safeFilename = `banner-${guildId}-${Date.now()}.png`;
     const filePath = join(this.bannersPath, safeFilename);
 
@@ -162,9 +155,7 @@ export class BannerService {
     const { writeFile } = await import("node:fs/promises");
     await writeFile(filePath, buffer);
 
-    this.logger.info(
-      `Saved uploaded banner for guild ${guildId}: ${safeFilename}`,
-    );
+    this.logger.info(`Saved uploaded banner for guild ${guildId}: ${safeFilename}`);
 
     return safeFilename;
   }
@@ -188,10 +179,6 @@ export class BannerService {
     this.logger.info(`Reset banner to default for guild ${guildId}`);
   }
 
-  /**
-   * Local files are only needed for uploaded banners. Default and URL
-   * banners are referenced directly by URL (no attachments).
-   */
   resolveBannerAttachments(config: {
     bannerUrl: string | null;
   }): Array<{ name: string; attachment: Buffer }> {

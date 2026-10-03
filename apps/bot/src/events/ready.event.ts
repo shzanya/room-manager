@@ -18,10 +18,11 @@ export class ReadyEvent {
       this.logger.error("Failed to restore room cleanup state", error);
     });
 
-    // Periodic panel refresh every 60s to keep active room count current.
     setInterval(() => {
       for (const [, guild] of this.client.guilds.cache) {
-        svc().setupService.refreshPanel(guild).catch(() => undefined);
+        svc()
+          .setupService.refreshPanel(guild)
+          .catch(() => undefined);
       }
     }, 60_000);
   }

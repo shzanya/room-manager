@@ -1,6 +1,64 @@
+# Dependencies & Package Managers
 node_modules/
-dist/
-coverage/
+.pnpm-store/
+.bun/
 
+# Build & Compiler Outputs
+dist/
+build/
+out/
+coverage/
+.nyc_output/
+*.tsbuildinfo
+.cache/
+.turbo/
+**/.turbo/
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.*.local
+deploy_key*
+*.pem
+*.key
+*.pub
+id_rsa*
+id_ed25519*
+
+# Runtime Data, Databases & Backups
 data/
-.turbo/deploy_key
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+backup_*.sql
+*.sql.gz
+
+# Logs & Monitoring
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime Uploads & Generated Media
+**/assets/panel/banners/banner-*
+**/assets/emojis/packs/custom/
+
+# Temporary, OS & Editor Junk
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+*.tmp
+*.temp
+*.swp
+*~
+scratch/
+scripts/*.tmp.*
+
+# Local Docker Overrides
+docker-compose.override.yml

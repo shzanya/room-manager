@@ -1,9 +1,6 @@
 import type { GuildConfig, Room } from "@room-manager/contracts";
 
-export function canCreateRoom(
-  guild: GuildConfig,
-  existingRoom: Room | null,
-): boolean {
+export function canCreateRoom(guild: GuildConfig, existingRoom: Room | null): boolean {
   return guild.enabled && existingRoom === null;
 }
 

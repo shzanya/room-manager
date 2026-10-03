@@ -44,9 +44,7 @@ export class OwnerSelect {
         return;
       }
 
-      const room = await this.roomRepository.findByChannelId(
-        member.voice.channelId as ChannelId,
-      );
+      const room = await this.roomRepository.findByChannelId(member.voice.channelId as ChannelId);
       if (!room) {
         await interaction.editReply({
           ...v2Error(L.transfer.title, L.common.roomNotFound),
@@ -61,9 +59,7 @@ export class OwnerSelect {
         return;
       }
 
-      const targetMember = await guild.members
-        .fetch({ user: newOwnerId })
-        .catch(() => null);
+      const targetMember = await guild.members.fetch({ user: newOwnerId }).catch(() => null);
       if (!targetMember) {
         await interaction.editReply({
           ...v2Error(L.transfer.title, L.access.targetNotFound),
@@ -71,7 +67,6 @@ export class OwnerSelect {
         return;
       }
 
-      // Anti-self / anti-bot guard
       if (newOwnerId === interaction.user.id) {
         await interaction.editReply({
           ...v2Error(L.transfer.title, L.common.invalidTarget),
@@ -85,10 +80,7 @@ export class OwnerSelect {
         return;
       }
 
-      if (
-        !targetMember.voice.channelId ||
-        targetMember.voice.channelId !== room.channelId
-      ) {
+      if (!targetMember.voice.channelId || targetMember.voice.channelId !== room.channelId) {
         await interaction.editReply({
           ...v2Error(L.transfer.title, L.access.targetNotInRoom),
         });
@@ -99,7 +91,6 @@ export class OwnerSelect {
         ownerId: newOwnerId as UserId,
       });
 
-      // Thumbnail = the new owner (person the action is about).
       const newOwnerAvatar = targetMember.displayAvatarURL({
         extension: "png",
         size: 128,
@@ -111,9 +102,7 @@ export class OwnerSelect {
           actorId: interaction.user.id,
           text: L.transfer.doneText,
           details: [format(L.transfer.newOwner, { user: `<@${newOwnerId}>` })],
-          avatarUrl:
-            newOwnerAvatar ??
-            (await actorAvatarUrl(guild, interaction.user.id)),
+          avatarUrl: newOwnerAvatar ?? (await actorAvatarUrl(guild, interaction.user.id)),
         }),
       });
       await this.setupService.refreshPanel(guild);

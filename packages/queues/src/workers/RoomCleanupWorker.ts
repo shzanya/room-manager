@@ -10,15 +10,17 @@ export interface RoomCleanupJobData {
 }
 
 export interface RoomCleanupWorkerDeps {
-  logger: { info: (msg: string) => void; error: (msg: string, err?: unknown) => void; warn: (msg: string) => void };
+  logger: {
+    info: (msg: string) => void;
+    error: (msg: string, err?: unknown) => void;
+    warn: (msg: string) => void;
+  };
   onCleanup: (data: RoomCleanupJobData) => Promise<void>;
 }
 
 const QUEUE_NAME = "room-cleanup";
 
-export function createRoomCleanupWorker(
-  deps: RoomCleanupWorkerDeps,
-): Worker<RoomCleanupJobData> {
+export function createRoomCleanupWorker(deps: RoomCleanupWorkerDeps): Worker<RoomCleanupJobData> {
   return new Worker<RoomCleanupJobData>(
     QUEUE_NAME,
     async (job) => {

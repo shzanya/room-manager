@@ -1,9 +1,6 @@
 import type { GuildCooldownRepository } from "@room-manager/database";
 import type { GuildId } from "@room-manager/shared";
 
-/**
- * PG-backed room creation cooldown.
- */
 export function createRoomCreationPolicy(repo: GuildCooldownRepository) {
   return {
     async canCreate(guildId: GuildId): Promise<boolean> {
@@ -12,10 +9,7 @@ export function createRoomCreationPolicy(repo: GuildCooldownRepository) {
       return new Date() > expiresAt;
     },
 
-    async startCooldown(
-      guildId: GuildId,
-      durationSeconds: number,
-    ): Promise<void> {
+    async startCooldown(guildId: GuildId, durationSeconds: number): Promise<void> {
       if (durationSeconds <= 0) return;
       const expiresAt = new Date(Date.now() + durationSeconds * 1000);
       await repo.set(guildId, expiresAt);

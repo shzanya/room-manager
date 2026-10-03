@@ -7,14 +7,10 @@ import type { VoiceStateHandler } from "../VoiceStateHandler";
 @Discord()
 export class VoiceStateUpdateEvent {
   private readonly logger: Logger = svc().logger;
-  private readonly voiceStateHandler: VoiceStateHandler =
-    svc().voiceStateHandler;
+  private readonly voiceStateHandler: VoiceStateHandler = svc().voiceStateHandler;
 
   @On({ event: Events.VoiceStateUpdate })
-  async onVoiceStateUpdate([oldState, newState]: [
-    VoiceState,
-    VoiceState,
-  ]): Promise<void> {
+  async onVoiceStateUpdate([oldState, newState]: [VoiceState, VoiceState]): Promise<void> {
     try {
       await this.voiceStateHandler.handle(oldState, newState);
     } catch (error) {

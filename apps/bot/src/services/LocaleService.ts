@@ -2,9 +2,6 @@ import type { GuildSettingsRepository } from "@room-manager/database";
 import type { GuildId } from "@room-manager/shared";
 import type { Locale } from "../i18n";
 
-/**
- * Synchronous reads (in-memory cache) + async writes (PG).
- */
 export class LocaleService {
   private cache = new Map<string, Locale>();
 

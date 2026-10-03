@@ -1,9 +1,6 @@
 import type { RoomState } from "@room-manager/contracts";
 
-export function canTransitionRoomState(
-  from: RoomState,
-  to: RoomState,
-): boolean {
+export function canTransitionRoomState(from: RoomState, to: RoomState): boolean {
   if (from === to) {
     return true;
   }

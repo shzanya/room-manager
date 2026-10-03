@@ -81,6 +81,8 @@ services:
       CLUSTER_NAME: ${CLUSTER_NAME:-Frankfurt}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       METRICS_PORT: ${METRICS_PORT:-9090}
+      ENABLE_SHARDING: ${ENABLE_SHARDING:-false}
+      TOTAL_SHARDS: ${TOTAL_SHARDS:-3}
     ports:
       - "${BOT_PORT:-9090}:9090"
     networks:
