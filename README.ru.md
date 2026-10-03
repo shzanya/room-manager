@@ -127,7 +127,7 @@ Room Manager поддерживает **три режима взаимодейс
 <td align="center" width="50%">
 
 <img
-  src="screenshot/{27791F0-C7EF-43D0-82D1-EE48B6897EBE}.png"
+  src="screenshot/{227791F0-C7EF-43D0-82D1-EE48B6897EBE}.png"
   alt="Панель управления Room Manager"
   width="100%"
 />
